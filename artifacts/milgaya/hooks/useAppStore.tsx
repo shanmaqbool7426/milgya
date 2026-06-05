@@ -29,6 +29,7 @@ interface AppStoreContextValue extends AppStoreData {
   addReport: (report: LostItem) => Promise<void>;
   addFoundReport: (report: FoundItem) => Promise<void>;
   addMatchHistory: (entry: MatchHistoryEntry) => Promise<void>;
+  updateReport: (id: string, patch: Partial<LostItem>) => Promise<void>;
   clearAll: () => Promise<void>;
   isLoaded: boolean;
 }
@@ -42,6 +43,7 @@ const AppStoreContext = createContext<AppStoreContextValue>({
   addReport: async () => {},
   addFoundReport: async () => {},
   addMatchHistory: async () => {},
+  updateReport: async () => {},
   clearAll: async () => {},
   isLoaded: false,
 });
@@ -117,6 +119,15 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
     [myReports, myFoundReports, matchHistory, persist]
   );
 
+  const updateReport = useCallback(
+    async (id: string, patch: Partial<LostItem>) => {
+      const next = myReports.map((r) => (r.id === id ? { ...r, ...patch } : r));
+      setMyReports(next);
+      await persist(next, myFoundReports, matchHistory);
+    },
+    [myReports, myFoundReports, matchHistory, persist]
+  );
+
   const clearAll = useCallback(async () => {
     setMyReports([]);
     setMyFoundReports([]);
@@ -133,6 +144,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         addReport,
         addFoundReport,
         addMatchHistory,
+        updateReport,
         clearAll,
         isLoaded,
       }}

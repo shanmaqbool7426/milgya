@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Dimensions, Platform,
+  Dimensions, Platform, Alert,
 } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
 import { Feather } from "@expo/vector-icons";
@@ -31,7 +31,7 @@ export default function LostItemDetailScreen() {
   const insets = useSafeAreaInsets();
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
-  const { myReports } = useAppStore();
+  const { myReports, updateReport } = useAppStore();
 
   const mockItem = LOST_ITEMS.find((i) => i.id === id);
   const myItem = myReports.find((i) => i.id === id);
@@ -42,6 +42,27 @@ export default function LostItemDetailScreen() {
   const iconName = (CATEGORY_ICONS[item.category] ?? "box") as any;
 
   const [shared, setShared] = useState(false);
+  const [marking, setMarking] = useState(false);
+
+  const handleMarkRecovered = useCallback(() => {
+    Alert.alert(
+      "Mark as Recovered?",
+      "This will close your report and move it to your recovery history.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Yes, Recovered!",
+          style: "default",
+          onPress: async () => {
+            setMarking(true);
+            await updateReport(item.id, { status: "recovered" });
+            setMarking(false);
+            router.back();
+          },
+        },
+      ]
+    );
+  }, [item.id, updateReport]);
 
   const statusColor = item.status === "recovered" ? colors.success : item.status === "active" ? colors.primary : colors.mutedForeground;
 
@@ -105,11 +126,20 @@ export default function LostItemDetailScreen() {
 
       <View style={[styles.bottomBar, { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: bottomPad + 12 }]}>
         {isMyReport ? (
-          <View style={[styles.myReportBar, { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}30` }]}>
-            <Feather name="star" size={16} color={colors.primary} />
-            <Text style={[styles.myReportText, { color: colors.primary }]}>Your Report</Text>
-            <Text style={[styles.myReportSub, { color: colors.mutedForeground }]}>You submitted this lost item</Text>
-          </View>
+          item.status === "recovered" ? (
+            <View style={[styles.recoveredBar, { backgroundColor: `${colors.success}12`, borderColor: `${colors.success}30` }]}>
+              <Feather name="check-circle" size={18} color={colors.success} />
+              <Text style={[styles.recoveredText, { color: colors.success }]}>Item Recovered</Text>
+            </View>
+          ) : (
+            <Button
+              title={marking ? "Saving…" : "Mark as Recovered ✓"}
+              onPress={handleMarkRecovered}
+              fullWidth
+              size="lg"
+              variant="accent"
+            />
+          )
         ) : (
           <>
             <Button title="I Found This!" onPress={() => {}} fullWidth size="lg" variant="accent" />
@@ -218,4 +248,15 @@ const styles = StyleSheet.create({
   },
   myReportText: { fontFamily: "Inter_700Bold", fontSize: 15 },
   myReportSub: { fontFamily: "Inter_400Regular", fontSize: 13, flex: 1 },
+  recoveredBar: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  recoveredText: { fontFamily: "Inter_700Bold", fontSize: 16 },
 });
