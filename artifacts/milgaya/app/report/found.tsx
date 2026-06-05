@@ -13,6 +13,17 @@ import { useAppStore } from "@/hooks/useAppStore";
 
 const STEPS = ["Category", "Details", "Location", "Submit"];
 
+const CATEGORY_COLORS: Record<string, string> = {
+  Electronics: "#3B82F6", Bags: "#8B5CF6", Wallet: "#10B981",
+  Keys: "#F59E0B", Documents: "#EF4444", Jewellery: "#EC4899",
+  Pets: "#06B6D4", Other: "#6B7280",
+};
+const CATEGORY_ICONS: Record<string, string> = {
+  Electronics: "smartphone", Bags: "briefcase", Wallet: "credit-card",
+  Keys: "key", Documents: "file-text", Jewellery: "circle",
+  Pets: "heart", Other: "box",
+};
+
 export default function ReportFoundScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -26,41 +37,49 @@ export default function ReportFoundScreen() {
   const [description, setDescription] = useState("");
   const [foundLocation, setFoundLocation] = useState("");
   const [storageLocation, setStorageLocation] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-
-  const CATEGORY_COLORS: Record<string, string> = {
-    Electronics: "#3B82F6", Bags: "#8B5CF6", Wallet: "#10B981",
-    Keys: "#F59E0B", Documents: "#EF4444", Jewellery: "#EC4899",
-    Pets: "#06B6D4", Other: "#6B7280",
-  };
-  const CATEGORY_ICONS: Record<string, string> = {
-    Electronics: "smartphone", Bags: "briefcase", Wallet: "credit-card",
-    Keys: "key", Documents: "file-text", Jewellery: "circle",
-    Pets: "heart", Other: "box",
-  };
 
   const categoryLabel = CATEGORIES.find((c) => c.id === selectedCategory)?.label ?? "";
 
+  const validate = (): boolean => {
+    const next: Record<string, string> = {};
+    if (step === 1) {
+      if (!title.trim()) next.title = "Item name is required";
+      if (!description.trim()) next.description = "Description is required";
+    }
+    if (step === 2) {
+      if (!foundLocation.trim()) next.foundLocation = "Found location is required";
+      if (!storageLocation.trim()) next.storageLocation = "Storage location is required";
+    }
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
   const handleNext = async () => {
+    if (!validate()) return;
     if (step < STEPS.length - 1) {
       setStep(step + 1);
     } else {
+      setSubmitting(true);
       const now = new Date();
       const dateStr = now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
       const timeStr = now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
       await addFoundReport({
         id: `found_${Date.now()}`,
-        title: title || "Untitled Item",
+        title: title.trim() || "Untitled Item",
         category: categoryLabel,
-        description,
-        foundLocation,
-        storageLocation,
+        description: description.trim(),
+        foundLocation: foundLocation.trim(),
+        storageLocation: storageLocation.trim(),
         date: dateStr,
         time: timeStr,
         images: [],
         finderName: "Rahul Kumar",
         isVerified: false,
       });
+      setSubmitting(false);
       setSubmitted(true);
     }
   };
@@ -74,15 +93,38 @@ export default function ReportFoundScreen() {
           </View>
           <Text style={[styles.successTitle, { color: colors.foreground }]}>Thank You!</Text>
           <Text style={[styles.successText, { color: colors.mutedForeground }]}>
-            You're a community hero! Your found item report has been submitted. The owner will be notified.
+            You're a community hero! Your found item report is live. The owner will be notified.
           </Text>
+
           <View style={[styles.successCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Feather name="award" size={18} color="#F59E0B" />
             <Text style={[styles.successCardText, { color: colors.mutedForeground }]}>
               You've earned +10 Community Points for helping!
             </Text>
           </View>
-          <Button title="Go Home" onPress={() => router.replace("/(tabs)")} fullWidth size="lg" variant="accent" style={{ marginTop: 8 }} />
+
+          <View style={[styles.successCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Feather name="zap" size={18} color={colors.primary} />
+            <Text style={[styles.successCardText, { color: colors.mutedForeground }]}>
+              Owners with matching lost reports have been automatically notified.
+            </Text>
+          </View>
+
+          <View style={styles.successBtns}>
+            <Button
+              title="View My Report"
+              onPress={() => router.replace("/(tabs)/profile")}
+              fullWidth
+              size="lg"
+              variant="accent"
+            />
+            <Button
+              title="Go Home"
+              onPress={() => router.replace("/(tabs)")}
+              fullWidth
+              variant="outline"
+            />
+          </View>
         </View>
       </View>
     );
@@ -121,7 +163,7 @@ export default function ReportFoundScreen() {
         ))}
       </View>
 
-      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomPad + 100 }]} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomPad + 100 }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {step === 0 && (
           <View style={styles.step}>
             <Text style={[styles.stepTitle, { color: colors.foreground }]}>What did you find?</Text>
@@ -169,12 +211,27 @@ export default function ReportFoundScreen() {
           <View style={styles.step}>
             <Text style={[styles.stepTitle, { color: colors.foreground }]}>Describe the Item</Text>
             <Text style={[styles.stepSub, { color: colors.mutedForeground }]}>A detailed description helps the owner prove it's theirs</Text>
-            <FormField label="Item Name *" placeholder="e.g. Samsung Galaxy Phone" value={title} onChangeText={setTitle} colors={colors} />
-            <FormField label="Description *" placeholder="Describe the item — color, brand, condition..." value={description} onChangeText={setDescription} colors={colors} multiline />
+            <FormField
+              label="Item Name *"
+              placeholder="e.g. Samsung Galaxy Phone"
+              value={title}
+              onChangeText={(t: string) => { setTitle(t); setErrors((e) => ({ ...e, title: "" })); }}
+              colors={colors}
+              error={errors.title}
+            />
+            <FormField
+              label="Description *"
+              placeholder="Describe the item — color, brand, condition, any markings..."
+              value={description}
+              onChangeText={(t: string) => { setDescription(t); setErrors((e) => ({ ...e, description: "" })); }}
+              colors={colors}
+              multiline
+              error={errors.description}
+            />
             <View style={[styles.tipCard, { backgroundColor: `${colors.primary}08`, borderColor: `${colors.primary}25` }]}>
               <Feather name="info" size={14} color={colors.primary} />
               <Text style={[styles.tipText, { color: colors.mutedForeground }]}>
-                Tip: Don't reveal all unique identifiers publicly — save some for ownership verification
+                Tip: Don't reveal all unique identifiers publicly — save some for ownership verification.
               </Text>
             </View>
           </View>
@@ -184,8 +241,22 @@ export default function ReportFoundScreen() {
           <View style={styles.step}>
             <Text style={[styles.stepTitle, { color: colors.foreground }]}>Location Details</Text>
             <Text style={[styles.stepSub, { color: colors.mutedForeground }]}>Help the owner understand where it was found and where to collect</Text>
-            <FormField label="Found Location *" placeholder="e.g. Cubbon Park, East Gate" value={foundLocation} onChangeText={setFoundLocation} colors={colors} />
-            <FormField label="Storage Location *" placeholder="e.g. Kept at home / Nearby police station" value={storageLocation} onChangeText={setStorageLocation} colors={colors} />
+            <FormField
+              label="Found Location *"
+              placeholder="e.g. Cubbon Park, East Gate"
+              value={foundLocation}
+              onChangeText={(t: string) => { setFoundLocation(t); setErrors((e) => ({ ...e, foundLocation: "" })); }}
+              colors={colors}
+              error={errors.foundLocation}
+            />
+            <FormField
+              label="Where is it now? *"
+              placeholder="e.g. Kept at home / Nearby police station"
+              value={storageLocation}
+              onChangeText={(t: string) => { setStorageLocation(t); setErrors((e) => ({ ...e, storageLocation: "" })); }}
+              colors={colors}
+              error={errors.storageLocation}
+            />
 
             <TouchableOpacity style={[styles.partnerBtn, { backgroundColor: colors.secondary, borderColor: `${colors.primary}40` }]}>
               <Feather name="shield" size={16} color={colors.primary} />
@@ -201,9 +272,11 @@ export default function ReportFoundScreen() {
         {step === 3 && (
           <View style={styles.step}>
             <Text style={[styles.stepTitle, { color: colors.foreground }]}>Review & Submit</Text>
+            <Text style={[styles.stepSub, { color: colors.mutedForeground }]}>Review your report before submitting</Text>
             <View style={[styles.summaryCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <SummaryRow icon="tag" label="Category" value={CATEGORIES.find((c) => c.id === selectedCategory)?.label ?? "Not selected"} colors={colors} />
+              <SummaryRow icon="tag" label="Category" value={categoryLabel || "Not selected"} colors={colors} />
               <SummaryRow icon="package" label="Item" value={title || "Not entered"} colors={colors} />
+              <SummaryRow icon="align-left" label="Description" value={description || "Not entered"} colors={colors} />
               <SummaryRow icon="map-pin" label="Found at" value={foundLocation || "Not entered"} colors={colors} />
               <SummaryRow icon="home" label="Stored at" value={storageLocation || "Not entered"} colors={colors} />
             </View>
@@ -220,19 +293,19 @@ export default function ReportFoundScreen() {
 
       <View style={[styles.bottomBar, { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: bottomPad + 12 }]}>
         <Button
-          title={step === STEPS.length - 1 ? "Submit Report" : "Continue"}
+          title={step === STEPS.length - 1 ? (submitting ? "Submitting…" : "Submit Report") : "Continue"}
           onPress={handleNext}
           fullWidth
           size="lg"
           variant="accent"
-          disabled={step === 0 && !selectedCategory}
+          disabled={(step === 0 && !selectedCategory) || submitting}
         />
       </View>
     </View>
   );
 }
 
-function FormField({ label, placeholder, value, onChangeText, colors, multiline }: any) {
+function FormField({ label, placeholder, value, onChangeText, colors, multiline, error }: any) {
   return (
     <View style={styles.field}>
       <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{label}</Text>
@@ -244,12 +317,13 @@ function FormField({ label, placeholder, value, onChangeText, colors, multiline 
         multiline={multiline}
         style={[styles.input, {
           backgroundColor: colors.card,
-          borderColor: colors.border,
+          borderColor: error ? colors.destructive : colors.border,
           color: colors.foreground,
           minHeight: multiline ? 100 : 48,
         }]}
         textAlignVertical={multiline ? "top" : "center"}
       />
+      {error ? <Text style={[styles.errorText, { color: colors.destructive }]}>{error}</Text> : null}
     </View>
   );
 }
@@ -259,21 +333,14 @@ function SummaryRow({ icon, label, value, colors }: any) {
     <View style={styles.summaryRow}>
       <Feather name={icon as any} size={14} color={colors.accent} />
       <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>{label}:</Text>
-      <Text style={[styles.summaryValue, { color: colors.foreground, flex: 1 }]}>{value}</Text>
+      <Text style={[styles.summaryValue, { color: colors.foreground, flex: 1 }]} numberOfLines={2}>{value}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-  },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1 },
   headerTitle: { fontFamily: "Inter_600SemiBold", fontSize: 17 },
   iconBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
   stepBar: { flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingVertical: 16 },
@@ -300,13 +367,14 @@ const styles = StyleSheet.create({
   field: { gap: 6 },
   fieldLabel: { fontFamily: "Inter_600SemiBold", fontSize: 14 },
   input: { borderWidth: 1.5, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, fontFamily: "Inter_400Regular" },
+  errorText: { fontFamily: "Inter_400Regular", fontSize: 12, marginTop: -2 },
   tipCard: { borderRadius: 12, borderWidth: 1, padding: 12, flexDirection: "row", gap: 8, alignItems: "flex-start" },
   tipText: { fontFamily: "Inter_400Regular", fontSize: 13, flex: 1, lineHeight: 19 },
   partnerBtn: { flexDirection: "row", alignItems: "center", gap: 10, padding: 14, borderRadius: 12, borderWidth: 1.5 },
   partnerBtnTitle: { fontFamily: "Inter_600SemiBold", fontSize: 14 },
   partnerBtnSub: { fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 },
   summaryCard: { borderRadius: 12, borderWidth: 1, padding: 14, gap: 12 },
-  summaryRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  summaryRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
   summaryLabel: { fontFamily: "Inter_400Regular", fontSize: 14 },
   summaryValue: { fontFamily: "Inter_500Medium", fontSize: 14 },
   heroCard: { borderRadius: 12, borderWidth: 1, padding: 14, flexDirection: "row", gap: 12, alignItems: "center" },
@@ -319,4 +387,5 @@ const styles = StyleSheet.create({
   successText: { fontFamily: "Inter_400Regular", fontSize: 15, textAlign: "center", lineHeight: 23 },
   successCard: { flexDirection: "row", alignItems: "center", gap: 10, padding: 14, borderRadius: 12, borderWidth: 1, width: "100%" },
   successCardText: { fontFamily: "Inter_400Regular", fontSize: 13, flex: 1 },
+  successBtns: { gap: 10, width: "100%", marginTop: 4 },
 });
