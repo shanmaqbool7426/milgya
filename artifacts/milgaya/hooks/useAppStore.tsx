@@ -33,6 +33,8 @@ interface AppStoreContextValue extends AppStoreData {
   addFoundReport: (report: FoundItem) => Promise<void>;
   addMatchHistory: (entry: MatchHistoryEntry) => Promise<void>;
   updateReport: (id: string, patch: Partial<LostItem>) => Promise<void>;
+  deleteReport: (id: string) => Promise<void>;
+  deleteFoundReport: (id: string) => Promise<void>;
   markNotificationRead: (id: string) => Promise<void>;
   markAllNotificationsRead: () => Promise<void>;
   clearAll: () => Promise<void>;
@@ -52,6 +54,8 @@ const AppStoreContext = createContext<AppStoreContextValue>({
   addFoundReport: async () => {},
   addMatchHistory: async () => {},
   updateReport: async () => {},
+  deleteReport: async () => {},
+  deleteFoundReport: async () => {},
   markNotificationRead: async () => {},
   markAllNotificationsRead: async () => {},
   clearAll: async () => {},
@@ -205,6 +209,26 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
     [myReports, myFoundReports, matchHistory, notifications, seenMatchPairs, persist]
   );
 
+  const deleteReport = useCallback(
+    async (id: string) => {
+      const next = myReports.filter((r) => r.id !== id);
+      const nextPairs = seenMatchPairs.filter((p) => !p.startsWith(`${id}:`));
+      setMyReports(next);
+      setSeenMatchPairs(nextPairs);
+      await persist(next, myFoundReports, matchHistory, notifications, nextPairs);
+    },
+    [myReports, myFoundReports, matchHistory, notifications, seenMatchPairs, persist]
+  );
+
+  const deleteFoundReport = useCallback(
+    async (id: string) => {
+      const next = myFoundReports.filter((r) => r.id !== id);
+      setMyFoundReports(next);
+      await persist(myReports, next, matchHistory, notifications, seenMatchPairs);
+    },
+    [myReports, myFoundReports, matchHistory, notifications, seenMatchPairs, persist]
+  );
+
   const markNotificationRead = useCallback(
     async (id: string) => {
       const next = notifications.map((n) => n.id === id ? { ...n, isRead: true } : n);
@@ -243,6 +267,8 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         addFoundReport,
         addMatchHistory,
         updateReport,
+        deleteReport,
+        deleteFoundReport,
         markNotificationRead,
         markAllNotificationsRead,
         clearAll,

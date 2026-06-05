@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Dimensions, Platform,
+  Dimensions, Platform, Alert,
 } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
 import { Feather } from "@expo/vector-icons";
@@ -32,7 +32,7 @@ export default function FoundItemDetailScreen() {
   const insets = useSafeAreaInsets();
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
-  const { myFoundReports } = useAppStore();
+  const { myFoundReports, deleteFoundReport } = useAppStore();
 
   const mockItem = FOUND_ITEMS.find((i) => i.id === id);
   const myItem = myFoundReports.find((i) => i.id === id);
@@ -43,6 +43,27 @@ export default function FoundItemDetailScreen() {
   const iconColor = CATEGORY_COLORS[item.category] ?? "#6B7280";
   const iconName = (CATEGORY_ICONS[item.category] ?? "box") as any;
 
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = useCallback(() => {
+    Alert.alert(
+      "Delete Report?",
+      "This will permanently remove your found item report. This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            setDeleting(true);
+            await deleteFoundReport(item.id);
+            router.back();
+          },
+        },
+      ]
+    );
+  }, [item.id, deleteFoundReport]);
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: topPad + 8, backgroundColor: colors.background, borderBottomColor: colors.border }]}>
@@ -50,9 +71,15 @@ export default function FoundItemDetailScreen() {
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>Found Item</Text>
-        <TouchableOpacity style={styles.iconBtn}>
-          <Feather name="share-2" size={20} color={colors.primary} />
-        </TouchableOpacity>
+        {isMyReport ? (
+          <TouchableOpacity onPress={handleDelete} style={styles.iconBtn} disabled={deleting}>
+            <Feather name="trash-2" size={20} color={colors.destructive} />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={styles.iconBtn}>
+            <Feather name="share-2" size={20} color={colors.primary} />
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomPad + 100 }]} showsVerticalScrollIndicator={false}>
@@ -127,6 +154,19 @@ export default function FoundItemDetailScreen() {
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Description</Text>
             <Text style={[styles.descText, { color: colors.mutedForeground }]}>{item.description}</Text>
           </View>
+
+          {isMyReport && (
+            <TouchableOpacity
+              onPress={handleDelete}
+              disabled={deleting}
+              style={[styles.deleteRow, { borderColor: `${colors.destructive}25`, backgroundColor: `${colors.destructive}08` }]}
+            >
+              <Feather name="trash-2" size={16} color={colors.destructive} />
+              <Text style={[styles.deleteRowText, { color: colors.destructive }]}>
+                {deleting ? "Deleting…" : "Delete this report"}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
 
@@ -221,6 +261,15 @@ const styles = StyleSheet.create({
   openText: { fontFamily: "Inter_600SemiBold", fontSize: 11 },
   descCard: { borderRadius: 12, borderWidth: 1, padding: 14, gap: 6 },
   descText: { fontFamily: "Inter_400Regular", fontSize: 14, lineHeight: 21 },
+  deleteRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  deleteRowText: { fontFamily: "Inter_500Medium", fontSize: 14 },
   bottomBar: {
     position: "absolute",
     bottom: 0,

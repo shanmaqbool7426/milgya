@@ -31,7 +31,7 @@ export default function LostItemDetailScreen() {
   const insets = useSafeAreaInsets();
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
-  const { myReports, updateReport } = useAppStore();
+  const { myReports, updateReport, deleteReport } = useAppStore();
 
   const mockItem = LOST_ITEMS.find((i) => i.id === id);
   const myItem = myReports.find((i) => i.id === id);
@@ -43,6 +43,7 @@ export default function LostItemDetailScreen() {
 
   const [shared, setShared] = useState(false);
   const [marking, setMarking] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const handleMarkRecovered = useCallback(() => {
     Alert.alert(
@@ -64,6 +65,25 @@ export default function LostItemDetailScreen() {
     );
   }, [item.id, updateReport]);
 
+  const handleDelete = useCallback(() => {
+    Alert.alert(
+      "Delete Report?",
+      "This will permanently remove your lost item report. This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            setDeleting(true);
+            await deleteReport(item.id);
+            router.back();
+          },
+        },
+      ]
+    );
+  }, [item.id, deleteReport]);
+
   const statusColor = item.status === "recovered" ? colors.success : item.status === "active" ? colors.primary : colors.mutedForeground;
 
   return (
@@ -73,9 +93,15 @@ export default function LostItemDetailScreen() {
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>Lost Item</Text>
-        <TouchableOpacity onPress={() => setShared(!shared)} style={styles.iconBtn}>
-          <Feather name="share-2" size={20} color={colors.primary} />
-        </TouchableOpacity>
+        {isMyReport ? (
+          <TouchableOpacity onPress={handleDelete} style={styles.iconBtn} disabled={deleting}>
+            <Feather name="trash-2" size={20} color={colors.destructive} />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity onPress={() => setShared(!shared)} style={styles.iconBtn}>
+            <Feather name="share-2" size={20} color={colors.primary} />
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomPad + 100 }]} showsVerticalScrollIndicator={false}>
@@ -115,12 +141,27 @@ export default function LostItemDetailScreen() {
             <Text style={[styles.descText, { color: colors.mutedForeground }]}>{item.description}</Text>
           </View>
 
-          <View style={[styles.warnCard, { backgroundColor: `${colors.warning}10`, borderColor: `${colors.warning}30` }]}>
-            <Feather name="alert-triangle" size={16} color={colors.warning} />
-            <Text style={[styles.warnText, { color: colors.warning }]}>
-              Please only contact the owner if you've found this item. False claims are reported.
-            </Text>
-          </View>
+          {isMyReport && (
+            <TouchableOpacity
+              onPress={handleDelete}
+              disabled={deleting}
+              style={[styles.deleteRow, { borderColor: `${colors.destructive}25`, backgroundColor: `${colors.destructive}08` }]}
+            >
+              <Feather name="trash-2" size={16} color={colors.destructive} />
+              <Text style={[styles.deleteRowText, { color: colors.destructive }]}>
+                {deleting ? "Deleting…" : "Delete this report"}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {!isMyReport && (
+            <View style={[styles.warnCard, { backgroundColor: `${colors.warning}10`, borderColor: `${colors.warning}30` }]}>
+              <Feather name="alert-triangle" size={16} color={colors.warning} />
+              <Text style={[styles.warnText, { color: colors.warning }]}>
+                Please only contact the owner if you've found this item. False claims are reported.
+              </Text>
+            </View>
+          )}
         </View>
       </ScrollView>
 
@@ -223,6 +264,15 @@ const styles = StyleSheet.create({
   descCard: { borderRadius: 12, borderWidth: 1, padding: 14, gap: 6 },
   descTitle: { fontFamily: "Inter_600SemiBold", fontSize: 14 },
   descText: { fontFamily: "Inter_400Regular", fontSize: 14, lineHeight: 21 },
+  deleteRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  deleteRowText: { fontFamily: "Inter_500Medium", fontSize: 14 },
   warnCard: { borderRadius: 12, borderWidth: 1, padding: 14, flexDirection: "row", gap: 10, alignItems: "flex-start" },
   warnText: { fontFamily: "Inter_400Regular", fontSize: 13, flex: 1, lineHeight: 19 },
   bottomBar: {
