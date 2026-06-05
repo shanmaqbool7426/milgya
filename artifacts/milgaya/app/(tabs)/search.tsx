@@ -1,7 +1,7 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useMemo } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, FlatList, Platform,
+  TextInput, FlatList, Platform, Animated,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -9,58 +9,100 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { LostItemCard, FoundItemCard } from "@/components/ItemCard";
 import { LOST_ITEMS, FOUND_ITEMS, CATEGORIES } from "@/constants/mockData";
+import { useAppStore } from "@/hooks/useAppStore";
+import { Badge } from "@/components/ui/Badge";
 
 const RECENT_SEARCHES = ["Black backpack", "iPhone 15", "Brown wallet", "Car keys", "Passport"];
-const FILTER_OPTIONS = ["All", "Lost", "Found"];
+const TYPE_FILTERS = ["All", "Lost", "Found"];
+const STATUS_FILTERS = ["Any", "Active", "Recovered"];
+
+const CATEGORY_COLORS: Record<string, string> = {
+  Electronics: "#3B82F6", Bags: "#8B5CF6", Wallet: "#10B981",
+  Keys: "#F59E0B", Documents: "#EF4444", Jewellery: "#EC4899",
+  Pets: "#06B6D4", Other: "#6B7280",
+};
+const CATEGORY_ICONS: Record<string, string> = {
+  Electronics: "smartphone", Bags: "briefcase", Wallet: "credit-card",
+  Keys: "key", Documents: "file-text", Jewellery: "circle",
+  Pets: "heart", Other: "box",
+};
 
 export default function SearchScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
+  const { myReports, myFoundReports } = useAppStore();
 
   const [query, setQuery] = useState("");
-  const [activeFilter, setActiveFilter] = useState("All");
+  const [typeFilter, setTypeFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("Any");
   const [activeCategory, setActiveCategory] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
-  const isSearching = query.length > 0;
+  const isSearching = query.length > 0 || activeCategory !== "";
 
-  const allItems = [
-    ...LOST_ITEMS.map((i) => ({ ...i, _type: "lost" as const })),
-    ...FOUND_ITEMS.map((i) => ({ ...i, _type: "found" as const })),
-  ];
+  const activeFilterCount = [
+    typeFilter !== "All",
+    statusFilter !== "Any",
+    activeCategory !== "",
+  ].filter(Boolean).length;
 
-  const filtered = allItems.filter((item) => {
-    const matchesQuery = item.title.toLowerCase().includes(query.toLowerCase()) ||
-      item.description.toLowerCase().includes(query.toLowerCase());
-    const matchesFilter = activeFilter === "All" || item._type === activeFilter.toLowerCase();
-    const matchesCategory = !activeCategory || item.category === activeCategory;
-    return matchesQuery && matchesFilter && matchesCategory;
-  });
+  const allItems = useMemo(() => [
+    ...LOST_ITEMS.map((i) => ({ ...i, _type: "lost" as const, _mine: false })),
+    ...myReports.map((i) => ({ ...i, _type: "lost" as const, _mine: true })),
+    ...FOUND_ITEMS.map((i) => ({ ...i, _type: "found" as const, _mine: false })),
+    ...myFoundReports.map((i) => ({ ...i, _type: "found" as const, _mine: true })),
+  ], [myReports, myFoundReports]);
 
-  const CATEGORY_COLORS: Record<string, string> = {
-    Electronics: "#3B82F6", Bags: "#8B5CF6", Wallet: "#10B981",
-    Keys: "#F59E0B", Documents: "#EF4444", Jewellery: "#EC4899",
-    Pets: "#06B6D4", Other: "#6B7280",
-  };
-  const CATEGORY_ICONS: Record<string, string> = {
-    Electronics: "smartphone", Bags: "briefcase", Wallet: "credit-card",
-    Keys: "key", Documents: "file-text", Jewellery: "circle",
-    Pets: "heart", Other: "box",
-  };
+  const filtered = useMemo(() => {
+    const q = query.toLowerCase();
+    return allItems.filter((item) => {
+      const matchesQuery = !q ||
+        item.title.toLowerCase().includes(q) ||
+        item.description.toLowerCase().includes(q) ||
+        item.category.toLowerCase().includes(q) ||
+        ("location" in item ? (item.location ?? "").toLowerCase().includes(q) : false) ||
+        ("foundLocation" in item ? (item.foundLocation ?? "").toLowerCase().includes(q) : false);
+
+      const matchesType =
+        typeFilter === "All" ||
+        (typeFilter === "Lost" && item._type === "lost") ||
+        (typeFilter === "Found" && item._type === "found");
+
+      const matchesCategory = !activeCategory || item.category === activeCategory;
+
+      const matchesStatus =
+        statusFilter === "Any" ||
+        item._type === "found" ||
+        (statusFilter === "Active" && (item as any).status === "active") ||
+        (statusFilter === "Recovered" && (item as any).status === "recovered");
+
+      return matchesQuery && matchesType && matchesCategory && matchesStatus;
+    });
+  }, [allItems, query, typeFilter, activeCategory, statusFilter]);
+
+  function clearFilters() {
+    setTypeFilter("All");
+    setStatusFilter("Any");
+    setActiveCategory("");
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header */}
       <View style={[styles.header, { paddingTop: topPad + 16, backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <Text style={[styles.title, { color: colors.foreground }]}>Search</Text>
+
+        {/* Search bar */}
         <View style={[styles.searchBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Feather name="search" size={18} color={colors.mutedForeground} />
           <TextInput
             ref={inputRef}
             value={query}
             onChangeText={setQuery}
-            placeholder="Search items, categories, locations..."
+            placeholder="Items, categories, locations…"
             placeholderTextColor={colors.mutedForeground}
             style={[styles.input, { color: colors.foreground }]}
             autoFocus={false}
@@ -74,30 +116,112 @@ export default function SearchScreen() {
 
         {/* Filter row */}
         <View style={styles.filterRow}>
-          {FILTER_OPTIONS.map((f) => (
+          {TYPE_FILTERS.map((f) => (
             <TouchableOpacity
               key={f}
-              onPress={() => setActiveFilter(f)}
+              onPress={() => setTypeFilter(f)}
               style={[
                 styles.filterBtn,
                 {
-                  backgroundColor: activeFilter === f ? colors.primary : colors.muted,
-                  borderColor: activeFilter === f ? colors.primary : colors.border,
+                  backgroundColor: typeFilter === f ? colors.primary : colors.muted,
+                  borderColor: typeFilter === f ? colors.primary : colors.border,
                 },
               ]}
             >
-              <Text style={[styles.filterText, { color: activeFilter === f ? "#FFF" : colors.mutedForeground }]}>
+              <Text style={[styles.filterText, { color: typeFilter === f ? "#FFF" : colors.mutedForeground }]}>
                 {f}
               </Text>
             </TouchableOpacity>
           ))}
           <View style={{ flex: 1 }} />
-          <TouchableOpacity style={[styles.sortBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-            <Feather name="sliders" size={15} color={colors.mutedForeground} />
+          <TouchableOpacity
+            onPress={() => setShowFilters((v) => !v)}
+            style={[
+              styles.sortBtn,
+              {
+                backgroundColor: showFilters || activeFilterCount > 0 ? `${colors.primary}15` : colors.muted,
+                borderColor: showFilters || activeFilterCount > 0 ? colors.primary : colors.border,
+              },
+            ]}
+          >
+            <Feather name="sliders" size={15} color={activeFilterCount > 0 ? colors.primary : colors.mutedForeground} />
+            {activeFilterCount > 0 && (
+              <View style={[styles.filterDot, { backgroundColor: colors.primary }]}>
+                <Text style={styles.filterDotText}>{activeFilterCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
+
+        {/* Expandable filter panel */}
+        {showFilters && (
+          <View style={[styles.filterPanel, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+            <View style={styles.filterPanelRow}>
+              <Text style={[styles.filterPanelLabel, { color: colors.foreground }]}>Status</Text>
+              <View style={styles.filterPanelChips}>
+                {STATUS_FILTERS.map((s) => (
+                  <TouchableOpacity
+                    key={s}
+                    onPress={() => setStatusFilter(s)}
+                    style={[
+                      styles.panelChip,
+                      {
+                        backgroundColor: statusFilter === s ? colors.primary : colors.card,
+                        borderColor: statusFilter === s ? colors.primary : colors.border,
+                      },
+                    ]}
+                  >
+                    {s === "Recovered" && (
+                      <Feather name="check-circle" size={12} color={statusFilter === s ? "#FFF" : colors.success} style={{ marginRight: 4 }} />
+                    )}
+                    {s === "Active" && (
+                      <Feather name="alert-circle" size={12} color={statusFilter === s ? "#FFF" : colors.primary} style={{ marginRight: 4 }} />
+                    )}
+                    <Text style={[styles.panelChipText, { color: statusFilter === s ? "#FFF" : colors.foreground }]}>
+                      {s}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.filterPanelRow}>
+              <Text style={[styles.filterPanelLabel, { color: colors.foreground }]}>Category</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                {CATEGORIES.map((cat) => {
+                  const color = CATEGORY_COLORS[cat.label] ?? "#6B7280";
+                  const selected = activeCategory === cat.label;
+                  return (
+                    <TouchableOpacity
+                      key={cat.id}
+                      onPress={() => setActiveCategory(selected ? "" : cat.label)}
+                      style={[
+                        styles.panelChip,
+                        {
+                          backgroundColor: selected ? `${color}20` : colors.card,
+                          borderColor: selected ? color : colors.border,
+                        },
+                      ]}
+                    >
+                      <Text style={[styles.panelChipText, { color: selected ? color : colors.foreground }]}>
+                        {cat.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
+            {activeFilterCount > 0 && (
+              <TouchableOpacity onPress={clearFilters} style={styles.clearFiltersBtn}>
+                <Text style={[styles.clearFiltersText, { color: colors.destructive }]}>Clear all filters</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
       </View>
 
+      {/* Body */}
       {!isSearching ? (
         <ScrollView
           contentContainerStyle={[styles.content, { paddingBottom: bottomPad + 90 }]}
@@ -132,13 +256,11 @@ export default function SearchScreen() {
                 const color = CATEGORY_COLORS[cat.label] ?? "#6B7280";
                 const icon = (CATEGORY_ICONS[cat.label] ?? "box") as any;
                 const selected = activeCategory === cat.label;
+                const count = allItems.filter((i) => i.category === cat.label).length;
                 return (
                   <TouchableOpacity
                     key={cat.id}
-                    onPress={() => {
-                      setActiveCategory(selected ? "" : cat.label);
-                      setQuery(selected ? "" : cat.label);
-                    }}
+                    onPress={() => setActiveCategory(selected ? "" : cat.label)}
                     style={[
                       styles.catCard,
                       {
@@ -152,9 +274,7 @@ export default function SearchScreen() {
                       <Feather name={icon} size={22} color={color} />
                     </View>
                     <Text style={[styles.catLabel, { color: selected ? color : colors.foreground }]}>{cat.label}</Text>
-                    <Text style={[styles.catCount, { color: colors.mutedForeground }]}>
-                      {allItems.filter((i) => i.category === cat.label).length} items
-                    </Text>
+                    <Text style={[styles.catCount, { color: colors.mutedForeground }]}>{count} item{count !== 1 ? "s" : ""}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -168,24 +288,51 @@ export default function SearchScreen() {
           contentContainerStyle={[styles.resultsList, { paddingBottom: bottomPad + 90 }]}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
-            <Text style={[styles.resultsCount, { color: colors.mutedForeground }]}>
-              {filtered.length} result{filtered.length !== 1 ? "s" : ""} for "{query}"
-            </Text>
+            <View style={styles.resultsHeader}>
+              <Text style={[styles.resultsCount, { color: colors.mutedForeground }]}>
+                {filtered.length} result{filtered.length !== 1 ? "s" : ""}
+                {query ? ` for "${query}"` : ""}
+                {activeCategory ? ` in ${activeCategory}` : ""}
+              </Text>
+              {activeFilterCount > 0 && (
+                <TouchableOpacity onPress={clearFilters}>
+                  <Text style={[styles.clear, { color: colors.primary }]}>Clear filters</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           }
-          renderItem={({ item }) =>
-            item._type === "lost" ? (
+          renderItem={({ item }) => {
+            const card = item._type === "lost" ? (
               <LostItemCard item={item as any} onPress={() => router.push(`/item/lost/${item.id}`)} />
             ) : (
               <FoundItemCard item={item as any} onPress={() => router.push(`/item/found/${item.id}`)} />
-            )
-          }
+            );
+            if (!item._mine) return card;
+            return (
+              <View>
+                {card}
+                <View style={[styles.minePill, { backgroundColor: `${colors.primary}12` }]}>
+                  <Feather name="star" size={11} color={colors.primary} />
+                  <Text style={[styles.minePillText, { color: colors.primary }]}>Your report</Text>
+                </View>
+              </View>
+            );
+          }}
           ListEmptyComponent={
             <View style={styles.empty}>
               <Feather name="search" size={48} color={colors.mutedForeground} />
               <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No results found</Text>
               <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-                Try different keywords or browse categories
+                Try different keywords or adjust your filters
               </Text>
+              {activeFilterCount > 0 && (
+                <TouchableOpacity
+                  onPress={clearFilters}
+                  style={[styles.clearBtn, { backgroundColor: colors.primary }]}
+                >
+                  <Text style={styles.clearBtnText}>Clear filters</Text>
+                </TouchableOpacity>
+              )}
             </View>
           }
         />
@@ -234,6 +381,37 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  filterDot: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  filterDotText: { fontFamily: "Inter_700Bold", fontSize: 10, color: "#FFF" },
+  filterPanel: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+    gap: 14,
+  },
+  filterPanelRow: { gap: 8 },
+  filterPanelLabel: { fontFamily: "Inter_600SemiBold", fontSize: 13 },
+  filterPanelChips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  panelChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 100,
+    borderWidth: 1,
+  },
+  panelChipText: { fontFamily: "Inter_500Medium", fontSize: 13 },
+  clearFiltersBtn: { alignSelf: "flex-start" },
+  clearFiltersText: { fontFamily: "Inter_500Medium", fontSize: 13 },
   content: { paddingHorizontal: 20, paddingTop: 20, gap: 24 },
   section: { gap: 12 },
   sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
@@ -259,8 +437,24 @@ const styles = StyleSheet.create({
   catLabel: { fontFamily: "Inter_600SemiBold", fontSize: 14 },
   catCount: { fontFamily: "Inter_400Regular", fontSize: 12 },
   resultsList: { paddingHorizontal: 20, paddingTop: 12 },
-  resultsCount: { fontFamily: "Inter_400Regular", fontSize: 13, marginBottom: 12 },
+  resultsHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
+  resultsCount: { fontFamily: "Inter_400Regular", fontSize: 13 },
+  minePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    alignSelf: "flex-end",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 100,
+    marginTop: -6,
+    marginBottom: 8,
+    marginRight: 4,
+  },
+  minePillText: { fontFamily: "Inter_600SemiBold", fontSize: 11 },
   empty: { alignItems: "center", justifyContent: "center", gap: 12, paddingVertical: 80 },
   emptyTitle: { fontFamily: "Inter_600SemiBold", fontSize: 18 },
   emptyText: { fontFamily: "Inter_400Regular", fontSize: 14, textAlign: "center" },
+  clearBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 100, marginTop: 4 },
+  clearBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 14, color: "#FFF" },
 });
