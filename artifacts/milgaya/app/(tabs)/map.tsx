@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity, FlatList,
   Dimensions, Platform,
@@ -8,40 +8,98 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { Badge } from "@/components/ui/Badge";
 import { MAP_MARKERS } from "@/constants/mockData";
+import { useAppStore } from "@/hooks/useAppStore";
 
-const { width, height } = Dimensions.get("window");
+const { height } = Dimensions.get("window");
 
-const FILTERS = ["All", "Lost", "Found", "Urgent", "Verified"];
+const FILTERS = ["All", "Lost", "Found", "Mine", "Urgent", "Verified"];
 
-const MARKER_POSITIONS = [
-  { id: "l1", x: 0.3, y: 0.35, type: "lost" },
-  { id: "l2", x: 0.65, y: 0.55, type: "lost" },
-  { id: "l3", x: 0.48, y: 0.42, type: "lost" },
-  { id: "f1", x: 0.28, y: 0.28, type: "found" },
-  { id: "f2", x: 0.72, y: 0.32, type: "found" },
-  { id: "f3", x: 0.5, y: 0.6, type: "found" },
+const MOCK_MARKER_POSITIONS = [
+  { id: "l1", x: 0.3,  y: 0.35, type: "lost" as const,  isMine: false },
+  { id: "l2", x: 0.65, y: 0.55, type: "lost" as const,  isMine: false },
+  { id: "l3", x: 0.48, y: 0.42, type: "lost" as const,  isMine: false },
+  { id: "f1", x: 0.28, y: 0.28, type: "found" as const, isMine: false },
+  { id: "f2", x: 0.72, y: 0.32, type: "found" as const, isMine: false },
+  { id: "f3", x: 0.5,  y: 0.6,  type: "found" as const, isMine: false },
 ];
+
+function stablePos(id: string, slot: number): { x: number; y: number } {
+  let h = 5381;
+  const s = id + String(slot);
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) + h + s.charCodeAt(i)) & 0x7fffffff;
+  }
+  const x = 0.08 + ((h % 840) / 1000);
+  const y = 0.08 + (((h >> 4) % 760) / 1000);
+  return { x: Math.min(x, 0.88), y: Math.min(y, 0.84) };
+}
+
+type MarkerPos = {
+  id: string;
+  x: number;
+  y: number;
+  type: "lost" | "found";
+  isMine: boolean;
+  title?: string;
+  category?: string;
+};
 
 export default function MapScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
+  const { myReports, myFoundReports } = useAppStore();
 
   const [activeFilter, setActiveFilter] = useState("All");
   const [selectedMarker, setSelectedMarker] = useState<string | null>(null);
   const mapHeight = height - topPad - bottomPad - 90;
 
-  const filteredMarkers = MARKER_POSITIONS.filter((m) => {
-    if (activeFilter === "All") return true;
-    if (activeFilter === "Lost") return m.type === "lost";
-    if (activeFilter === "Found") return m.type === "found";
-    return true;
-  });
+  const myMarkers = useMemo<MarkerPos[]>(() => {
+    const lost: MarkerPos[] = myReports.map((r, i) => ({
+      ...stablePos(r.id, i),
+      id: r.id,
+      type: "lost",
+      isMine: true,
+      title: r.title,
+      category: r.category,
+    }));
+    const found: MarkerPos[] = myFoundReports.map((r, i) => ({
+      ...stablePos(r.id, i + 100),
+      id: r.id,
+      type: "found",
+      isMine: true,
+      title: r.title,
+      category: r.category,
+    }));
+    return [...lost, ...found];
+  }, [myReports, myFoundReports]);
 
-  const selectedItem = selectedMarker
+  const allMarkers: MarkerPos[] = useMemo(
+    () => [...MOCK_MARKER_POSITIONS, ...myMarkers],
+    [myMarkers]
+  );
+
+  const filteredMarkers = useMemo(() => {
+    return allMarkers.filter((m) => {
+      if (activeFilter === "All") return true;
+      if (activeFilter === "Lost") return m.type === "lost";
+      if (activeFilter === "Found") return m.type === "found";
+      if (activeFilter === "Mine") return m.isMine;
+      return true;
+    });
+  }, [allMarkers, activeFilter]);
+
+  const selectedMockItem = selectedMarker
     ? MAP_MARKERS.find((m) => m.id === selectedMarker)
     : null;
+
+  const selectedMyItem = selectedMarker
+    ? myMarkers.find((m) => m.id === selectedMarker)
+    : null;
+
+  const myLostCount = myReports.length;
+  const myFoundCount = myFoundReports.length;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -66,8 +124,8 @@ export default function MapScreen() {
           <Text style={[styles.mapLabelText, { color: colors.mutedForeground }]}>Interactive map — Koramangala, Bangalore</Text>
         </View>
 
-        {/* Markers */}
-        {filteredMarkers.map((marker) => (
+        {/* Community markers */}
+        {filteredMarkers.filter((m) => !m.isMine).map((marker) => (
           <TouchableOpacity
             key={marker.id}
             onPress={() => setSelectedMarker(selectedMarker === marker.id ? null : marker.id)}
@@ -87,7 +145,28 @@ export default function MapScreen() {
           </TouchableOpacity>
         ))}
 
-        {/* My location marker */}
+        {/* My item markers — rendered on top, distinct gold ring style */}
+        {filteredMarkers.filter((m) => m.isMine).map((marker) => (
+          <TouchableOpacity
+            key={marker.id}
+            onPress={() => setSelectedMarker(selectedMarker === marker.id ? null : marker.id)}
+            style={[
+              styles.marker,
+              styles.myMarker,
+              {
+                left: `${marker.x * 100}%`,
+                top: topPad + 30 + marker.y * (mapHeight * 0.65),
+                backgroundColor: marker.type === "lost" ? "#EF4444" : "#10B981",
+                borderColor: selectedMarker === marker.id ? "#FFF" : "#F59E0B",
+                transform: [{ scale: selectedMarker === marker.id ? 1.2 : 1 }],
+              },
+            ]}
+          >
+            <Feather name="star" size={13} color="#FFF" />
+          </TouchableOpacity>
+        ))}
+
+        {/* My location dot */}
         <View style={[styles.myLocation, { left: "48%", top: topPad + 30 + mapHeight * 0.4, borderColor: colors.primary }]}>
           <View style={[styles.myLocationDot, { backgroundColor: colors.primary }]} />
         </View>
@@ -118,7 +197,9 @@ export default function MapScreen() {
               style={[
                 styles.chip,
                 {
-                  backgroundColor: activeFilter === item ? colors.primary : colors.card,
+                  backgroundColor: activeFilter === item
+                    ? (item === "Mine" ? "#F59E0B" : colors.primary)
+                    : colors.card,
                   shadowColor: "#000",
                   shadowOpacity: 0.08,
                   shadowRadius: 4,
@@ -127,6 +208,14 @@ export default function MapScreen() {
                 },
               ]}
             >
+              {item === "Mine" && (
+                <Feather
+                  name="star"
+                  size={12}
+                  color={activeFilter === "Mine" ? "#FFF" : "#F59E0B"}
+                  style={{ marginRight: 4 }}
+                />
+              )}
               <Text style={[styles.chipText, { color: activeFilter === item ? "#FFF" : colors.foreground }]}>
                 {item}
               </Text>
@@ -141,7 +230,7 @@ export default function MapScreen() {
           <View style={styles.stat}>
             <View style={[styles.statDot, { backgroundColor: "#EF4444" }]} />
             <Text style={[styles.statNum, { color: colors.foreground }]}>
-              {MAP_MARKERS.filter((m) => m.type === "lost").length}
+              {MAP_MARKERS.filter((m) => m.type === "lost").length + myLostCount}
             </Text>
             <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Lost</Text>
           </View>
@@ -149,15 +238,17 @@ export default function MapScreen() {
           <View style={styles.stat}>
             <View style={[styles.statDot, { backgroundColor: "#10B981" }]} />
             <Text style={[styles.statNum, { color: colors.foreground }]}>
-              {MAP_MARKERS.filter((m) => m.type === "found").length}
+              {MAP_MARKERS.filter((m) => m.type === "found").length + myFoundCount}
             </Text>
             <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Found</Text>
           </View>
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
           <View style={styles.stat}>
-            <View style={[styles.statDot, { backgroundColor: colors.primary }]} />
-            <Text style={[styles.statNum, { color: colors.foreground }]}>5</Text>
-            <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Partners</Text>
+            <View style={[styles.statDot, { backgroundColor: "#F59E0B" }]} />
+            <Text style={[styles.statNum, { color: colors.foreground }]}>
+              {myLostCount + myFoundCount}
+            </Text>
+            <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Mine</Text>
           </View>
         </View>
       </View>
@@ -169,17 +260,45 @@ export default function MapScreen() {
         <Feather name="navigation" size={22} color="#FFF" />
       </TouchableOpacity>
 
-      {/* Selected item popup */}
-      {selectedItem && (
+      {/* Selected community item popup */}
+      {selectedMockItem && !selectedMyItem && (
         <View style={[styles.popup, { backgroundColor: colors.card, borderColor: colors.border, bottom: bottomPad + 160 }]}>
-          <View style={[styles.popupIcon, { backgroundColor: selectedItem.type === "lost" ? "#EF444420" : "#10B98120" }]}>
-            <Feather name={selectedItem.type === "lost" ? "alert-circle" : "check-circle"} size={20} color={selectedItem.type === "lost" ? "#EF4444" : "#10B981"} />
+          <View style={[styles.popupIcon, { backgroundColor: selectedMockItem.type === "lost" ? "#EF444420" : "#10B98120" }]}>
+            <Feather
+              name={selectedMockItem.type === "lost" ? "alert-circle" : "check-circle"}
+              size={20}
+              color={selectedMockItem.type === "lost" ? "#EF4444" : "#10B981"}
+            />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.popupTitle, { color: colors.foreground }]}>{selectedItem.title}</Text>
-            <Text style={[styles.popupCat, { color: colors.mutedForeground }]}>{selectedItem.category}</Text>
+            <Text style={[styles.popupTitle, { color: colors.foreground }]}>{selectedMockItem.title}</Text>
+            <Text style={[styles.popupCat, { color: colors.mutedForeground }]}>{selectedMockItem.category}</Text>
           </View>
-          <Badge label={selectedItem.type === "lost" ? "Lost" : "Found"} variant={selectedItem.type === "lost" ? "destructive" : "success"} />
+          <Badge
+            label={selectedMockItem.type === "lost" ? "Lost" : "Found"}
+            variant={selectedMockItem.type === "lost" ? "destructive" : "success"}
+          />
+        </View>
+      )}
+
+      {/* Selected my item popup */}
+      {selectedMyItem && (
+        <View style={[styles.popup, { backgroundColor: colors.card, borderColor: "#F59E0B", borderWidth: 1.5, bottom: bottomPad + 160 }]}>
+          <View style={[styles.popupIcon, { backgroundColor: "#F59E0B20" }]}>
+            <Feather name="star" size={20} color="#F59E0B" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.popupTitle, { color: colors.foreground }]}>
+              {selectedMyItem.title ?? (selectedMyItem.type === "lost" ? "My Lost Report" : "My Found Report")}
+            </Text>
+            <Text style={[styles.popupCat, { color: colors.mutedForeground }]}>
+              {selectedMyItem.category ?? "—"} · Your report
+            </Text>
+          </View>
+          <Badge
+            label={selectedMyItem.type === "lost" ? "Lost" : "Found"}
+            variant={selectedMyItem.type === "lost" ? "destructive" : "success"}
+          />
         </View>
       )}
     </View>
@@ -220,6 +339,18 @@ const styles = StyleSheet.create({
     elevation: 4,
     marginLeft: -17,
     marginTop: -17,
+  },
+  myMarker: {
+    borderWidth: 3,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    marginLeft: -19,
+    marginTop: -19,
+    shadowColor: "#F59E0B",
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 8,
   },
   myLocation: {
     position: "absolute",
@@ -282,6 +413,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 100,
+    flexDirection: "row",
+    alignItems: "center",
   },
   chipText: { fontFamily: "Inter_600SemiBold", fontSize: 13 },
   statsBar: {
