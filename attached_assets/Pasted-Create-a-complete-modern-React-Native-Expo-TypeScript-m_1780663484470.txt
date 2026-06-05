@@ -1,0 +1,184 @@
+Create a complete modern React Native (Expo + TypeScript) mobile app UI called "MilGaya" — a community-driven Lost & Found Recovery Network.
+
+IMPORTANT:
+Build UI only.
+Do NOT implement backend, API calls, Firebase, authentication logic, database, or real functionality.
+Use mock data and dummy content everywhere.
+Focus entirely on beautiful UI, UX, navigation, layouts, and user experience.
+
+Design Style:
+
+* Premium modern startup design
+* Clean, minimal, professional
+* Inspired by Airbnb, Uber, Google Maps, and modern social apps
+* Smooth spacing and visual hierarchy
+* Mobile-first design
+* Light and Dark Mode support
+* Consistent design system
+* Modern cards, chips, badges, and buttons
+* Professional typography
+* Beautiful empty states
+* Skeleton loading states
+* Micro-interactions ready design
+
+App Name:
+MilGaya
+
+Purpose:
+A platform where users can report lost items, report found items, search nearby reports, and help recover belongings through the community.
+
+Create the following screens:
+
+1. Onboarding Screens
+
+* 3 premium onboarding screens
+* Illustrations/placeholders
+* App benefits
+* Continue button
+
+2. Welcome Screen
+
+* App logo
+* App tagline
+* Sign In button
+* Create Account button
+* Continue as Guest
+
+3. Home Screen
+
+* Search bar
+* Current location section
+* Nearby Lost Items
+* Nearby Found Items
+* Emergency Alerts section
+* Quick Actions:
+
+  * Report Lost
+  * Report Found
+  * Search Items
+  * Map View
+* Trending recoveries section
+* Modern cards
+
+4. Lost Item Details Screen
+
+* Large image gallery
+* Item title
+* Description
+* Last seen location
+* Date and time
+* Route information
+* Contact button
+* Share button
+* Report button
+* Recovery status badge
+
+5. Found Item Details Screen
+
+* Image gallery
+* Found location
+* Description
+* Verification section
+* Recovery partner card
+* Contact finder button
+
+6. Report Lost Item Screen
+
+* Multi-step form UI
+* Category selector
+* Image uploader placeholders
+* Location selector UI
+* Route selector UI
+* Description field
+* Submit button
+
+7. Report Found Item Screen
+
+* Similar premium form UI
+* Upload images
+* Select found location
+* Select storage location
+* Description
+
+8. Map Screen
+
+* Full-screen map UI mockup
+* Custom markers
+* Lost item markers
+* Found item markers
+* Filter chips
+* Floating action button
+
+9. Search Screen
+
+* Large search field
+* Recent searches
+* Categories
+* Filter options
+* Search results cards
+
+10. Notifications Screen
+
+* Beautiful notification list
+* Alert cards
+* Match found notifications
+* Recovery notifications
+* Emergency alerts
+
+11. Community Screen
+
+* Recovery success stories
+* Community contributions
+* Top helpers
+* Achievement badges
+
+12. Recovery Partners Screen
+
+* Verified partner cards
+* Shops
+* Schools
+* Police stations
+* Petrol pumps
+
+13. User Profile Screen
+
+* Profile header
+* Statistics cards
+* Successful recoveries
+* Reputation score
+* Settings access
+
+14. Settings Screen
+
+* Account section
+* Notification preferences
+* Appearance
+* Privacy
+* Help Center
+
+Navigation:
+
+* Bottom Tab Navigation
+
+  * Home
+  * Map
+  * Search
+  * Community
+  * Profile
+
+Requirements:
+
+* Create reusable UI components
+* Create reusable cards
+* Create reusable buttons
+* Create reusable badges
+* Create reusable form fields
+* Use mock data
+* Use TypeScript
+* Use Expo Router
+* Follow scalable folder structure
+* Make every screen production-quality
+* Ensure all screens are responsive and visually impressive
+
+Goal:
+The UI should look like a real startup-backed product ready to be presented to investors and users.
