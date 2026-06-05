@@ -91,3 +91,20 @@ export interface MapMarker {
   lng: number;
   category: string;
 }
+
+export interface FeedPost {
+  id: string;
+  type: "lost" | "found" | "story" | "alert";
+  authorName: string;
+  authorSubtitle: string;
+  timeAgo: string;
+  category: string;
+  title: string;
+  body: string;
+  location: string;
+  likes: number;
+  comments: number;
+  reward?: string;
+  isUrgent?: boolean;
+  isVerified?: boolean;
+}

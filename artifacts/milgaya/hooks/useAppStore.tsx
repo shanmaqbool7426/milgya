@@ -6,7 +6,7 @@ import React, {
   useState,
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { LostItem } from "@/constants/types";
+import type { LostItem, FoundItem } from "@/constants/types";
 
 export interface MatchHistoryEntry {
   id: string;
@@ -21,22 +21,26 @@ export interface MatchHistoryEntry {
 
 interface AppStoreData {
   myReports: LostItem[];
+  myFoundReports: FoundItem[];
   matchHistory: MatchHistoryEntry[];
 }
 
 interface AppStoreContextValue extends AppStoreData {
   addReport: (report: LostItem) => Promise<void>;
+  addFoundReport: (report: FoundItem) => Promise<void>;
   addMatchHistory: (entry: MatchHistoryEntry) => Promise<void>;
   clearAll: () => Promise<void>;
   isLoaded: boolean;
 }
 
-const STORAGE_KEY = "milgaya_store_v1";
+const STORAGE_KEY = "milgaya_store_v2";
 
 const AppStoreContext = createContext<AppStoreContextValue>({
   myReports: [],
+  myFoundReports: [],
   matchHistory: [],
   addReport: async () => {},
+  addFoundReport: async () => {},
   addMatchHistory: async () => {},
   clearAll: async () => {},
   isLoaded: false,
@@ -44,6 +48,7 @@ const AppStoreContext = createContext<AppStoreContextValue>({
 
 export function AppStoreProvider({ children }: { children: React.ReactNode }) {
   const [myReports, setMyReports] = useState<LostItem[]>([]);
+  const [myFoundReports, setMyFoundReports] = useState<FoundItem[]>([]);
   const [matchHistory, setMatchHistory] = useState<MatchHistoryEntry[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -54,6 +59,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         if (raw) {
           const parsed: AppStoreData = JSON.parse(raw);
           setMyReports(parsed.myReports ?? []);
+          setMyFoundReports(parsed.myFoundReports ?? []);
           setMatchHistory(parsed.matchHistory ?? []);
         }
       } catch (_) {
@@ -65,11 +71,19 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const persist = useCallback(
-    async (reports: LostItem[], history: MatchHistoryEntry[]) => {
+    async (
+      reports: LostItem[],
+      foundReports: FoundItem[],
+      history: MatchHistoryEntry[]
+    ) => {
       try {
         await AsyncStorage.setItem(
           STORAGE_KEY,
-          JSON.stringify({ myReports: reports, matchHistory: history })
+          JSON.stringify({
+            myReports: reports,
+            myFoundReports: foundReports,
+            matchHistory: history,
+          })
         );
       } catch (_) {}
     },
@@ -80,22 +94,32 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
     async (report: LostItem) => {
       const next = [report, ...myReports];
       setMyReports(next);
-      await persist(next, matchHistory);
+      await persist(next, myFoundReports, matchHistory);
     },
-    [myReports, matchHistory, persist]
+    [myReports, myFoundReports, matchHistory, persist]
+  );
+
+  const addFoundReport = useCallback(
+    async (report: FoundItem) => {
+      const next = [report, ...myFoundReports];
+      setMyFoundReports(next);
+      await persist(myReports, next, matchHistory);
+    },
+    [myReports, myFoundReports, matchHistory, persist]
   );
 
   const addMatchHistory = useCallback(
     async (entry: MatchHistoryEntry) => {
       const next = [entry, ...matchHistory].slice(0, 50);
       setMatchHistory(next);
-      await persist(myReports, next);
+      await persist(myReports, myFoundReports, next);
     },
-    [myReports, matchHistory, persist]
+    [myReports, myFoundReports, matchHistory, persist]
   );
 
   const clearAll = useCallback(async () => {
     setMyReports([]);
+    setMyFoundReports([]);
     setMatchHistory([]);
     await AsyncStorage.removeItem(STORAGE_KEY);
   }, []);
@@ -104,8 +128,10 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
     <AppStoreContext.Provider
       value={{
         myReports,
+        myFoundReports,
         matchHistory,
         addReport,
+        addFoundReport,
         addMatchHistory,
         clearAll,
         isLoaded,

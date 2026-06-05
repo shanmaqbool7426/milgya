@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { Button } from "@/components/ui/Button";
 import { CATEGORIES } from "@/constants/mockData";
+import { useAppStore } from "@/hooks/useAppStore";
 
 const STEPS = ["Category", "Details", "Location", "Submit"];
 
@@ -17,6 +18,7 @@ export default function ReportFoundScreen() {
   const insets = useSafeAreaInsets();
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
+  const { addFoundReport } = useAppStore();
 
   const [step, setStep] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -37,9 +39,30 @@ export default function ReportFoundScreen() {
     Pets: "heart", Other: "box",
   };
 
-  const handleNext = () => {
-    if (step < STEPS.length - 1) setStep(step + 1);
-    else setSubmitted(true);
+  const categoryLabel = CATEGORIES.find((c) => c.id === selectedCategory)?.label ?? "";
+
+  const handleNext = async () => {
+    if (step < STEPS.length - 1) {
+      setStep(step + 1);
+    } else {
+      const now = new Date();
+      const dateStr = now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+      const timeStr = now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+      await addFoundReport({
+        id: `found_${Date.now()}`,
+        title: title || "Untitled Item",
+        category: categoryLabel,
+        description,
+        foundLocation,
+        storageLocation,
+        date: dateStr,
+        time: timeStr,
+        images: [],
+        finderName: "Rahul Kumar",
+        isVerified: false,
+      });
+      setSubmitted(true);
+    }
   };
 
   if (submitted) {

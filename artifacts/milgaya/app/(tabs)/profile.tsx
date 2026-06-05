@@ -16,7 +16,7 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
-  const { myReports, matchHistory } = useAppStore();
+  const { myReports, myFoundReports, matchHistory } = useAppStore();
 
   const displayReports = myReports.slice(0, 5);
   const displayHistory = matchHistory.slice(0, 5);
@@ -141,6 +141,40 @@ export default function ProfileScreen() {
             ))
           )}
         </View>
+
+        {/* My Found Reports — from AsyncStorage */}
+        {myFoundReports.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Items I Found</Text>
+              <View style={[styles.countPill, { backgroundColor: `${colors.accent}18` }]}>
+                <Text style={[styles.countPillText, { color: colors.accent }]}>{myFoundReports.length}</Text>
+              </View>
+            </View>
+            {myFoundReports.slice(0, 5).map((item) => (
+              <View
+                key={item.id}
+                style={[styles.reportRow, { backgroundColor: colors.card, borderColor: colors.border }]}
+              >
+                <View style={[styles.reportIcon, { backgroundColor: `${colors.accent}15` }]}>
+                  <Feather name="check-circle" size={18} color={colors.accent} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.reportTitle, { color: colors.foreground }]} numberOfLines={1}>{item.title}</Text>
+                  <Text style={[styles.reportMeta, { color: colors.mutedForeground }]}>
+                    {item.category}  ·  {item.date}
+                  </Text>
+                  {item.foundLocation ? (
+                    <Text style={[styles.reportLocation, { color: colors.mutedForeground }]} numberOfLines={1}>
+                      <Feather name="map-pin" size={10} />  {item.foundLocation}
+                    </Text>
+                  ) : null}
+                </View>
+                <Badge label="Found" variant="accent" />
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* Match History — from AsyncStorage */}
         <View style={styles.section}>

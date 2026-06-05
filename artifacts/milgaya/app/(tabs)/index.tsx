@@ -15,9 +15,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { QuickAction } from "@/components/QuickAction";
 import { LostItemCard, FoundItemCard } from "@/components/ItemCard";
+import { FeedPost } from "@/components/FeedPost";
 import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
-import { LOST_ITEMS, FOUND_ITEMS } from "@/constants/mockData";
+import { LOST_ITEMS, FOUND_ITEMS, FEED_POSTS } from "@/constants/mockData";
 
 const EMERGENCY_ALERTS = [
   { id: "e1", title: "Passports Lost at IGI Airport", count: 3, color: "#EF4444" },
@@ -40,6 +41,7 @@ export default function HomeScreen() {
 
   const displayedLost = LOST_ITEMS.filter((i) => i.status === "active").slice(0, 3);
   const displayedFound = FOUND_ITEMS.slice(0, 3);
+  const previewFeed = FEED_POSTS.slice(0, 3);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -141,7 +143,7 @@ export default function HomeScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push("/(tabs)/search")}>
               <Text style={[styles.seeAll, { color: colors.primary }]}>See all</Text>
             </TouchableOpacity>
           </View>
@@ -155,6 +157,32 @@ export default function HomeScreen() {
               <FoundItemCard key={item.id} item={item} onPress={() => router.push(`/item/found/${item.id}`)} />
             ))
           )}
+        </View>
+
+        {/* Community Feed Preview — LinkedIn style */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionTitleRow}>
+              <Feather name="users" size={16} color={colors.primary} />
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Community Feed</Text>
+            </View>
+            <TouchableOpacity onPress={() => router.push("/(tabs)/community")}>
+              <Text style={[styles.seeAll, { color: colors.primary }]}>View all</Text>
+            </TouchableOpacity>
+          </View>
+          {previewFeed.map((post) => (
+            <FeedPost key={post.id} post={post} onPress={() => router.push("/(tabs)/community")} />
+          ))}
+          <TouchableOpacity
+            onPress={() => router.push("/(tabs)/community")}
+            style={[styles.moreFeedBtn, { backgroundColor: colors.secondary, borderColor: `${colors.primary}30` }]}
+          >
+            <Feather name="users" size={16} color={colors.primary} />
+            <Text style={[styles.moreFeedText, { color: colors.primary }]}>
+              See all community posts
+            </Text>
+            <Feather name="chevron-right" size={16} color={colors.primary} />
+          </TouchableOpacity>
         </View>
 
         {/* Trending Recoveries */}
@@ -302,6 +330,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: 8,
   },
+  moreFeedBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginTop: 4,
+  },
+  moreFeedText: { fontFamily: "Inter_600SemiBold", fontSize: 14, flex: 1, textAlign: "center" },
   trendCard: {
     padding: 14,
     borderRadius: 14,
