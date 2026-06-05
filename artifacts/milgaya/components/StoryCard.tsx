@@ -1,10 +1,21 @@
-import React from "react";
+import React, { useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import { Avatar } from "./ui/Avatar";
 import { Badge } from "./ui/Badge";
 import type { RecoveryStory } from "@/constants/types";
+
+const CATEGORY_COLORS: Record<string, string> = {
+  Electronics: "#3B82F6",
+  Bags: "#8B5CF6",
+  Wallet: "#10B981",
+  Keys: "#F59E0B",
+  Documents: "#EF4444",
+  Jewellery: "#EC4899",
+  Pets: "#06B6D4",
+  Other: "#6B7280",
+};
 
 interface StoryCardProps {
   story: RecoveryStory;
@@ -13,33 +24,98 @@ interface StoryCardProps {
 
 export function StoryCard({ story, onPress }: StoryCardProps) {
   const colors = useColors();
+  const [liked, setLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(story.likes);
+  const accentColor = CATEGORY_COLORS[story.category] ?? colors.primary;
+
+  const handleLike = () => {
+    setLiked((prev) => !prev);
+    setLikeCount((prev) => (liked ? prev - 1 : prev + 1));
+  };
 
   return (
     <TouchableOpacity
       onPress={onPress}
-      activeOpacity={0.88}
-      style={[styles.card, { backgroundColor: colors.card, borderRadius: colors.radius, borderColor: colors.border }]}
+      activeOpacity={0.92}
+      style={[
+        styles.card,
+        {
+          backgroundColor: colors.card,
+          borderColor: colors.border,
+          borderRadius: 16,
+        },
+      ]}
     >
-      <View style={styles.header}>
-        <Avatar name={story.helperName} size={36} />
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.helper, { color: colors.foreground }]}>{story.helperName}</Text>
-          <Text style={[styles.date, { color: colors.mutedForeground }]}>{story.date}</Text>
+      {/* Colored accent bar at the top */}
+      <View style={[styles.accentBar, { backgroundColor: accentColor }]} />
+
+      <View style={styles.body}>
+        {/* Post Title — most prominent element */}
+        <Text style={[styles.title, { color: colors.foreground }]}>
+          {story.title}
+        </Text>
+
+        {/* Author row */}
+        <View style={styles.authorRow}>
+          <Avatar name={story.helperName} size={32} />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.authorName, { color: colors.foreground }]}>
+              {story.helperName}
+            </Text>
+            <Text style={[styles.date, { color: colors.mutedForeground }]}>
+              {story.date}
+            </Text>
+          </View>
+          <Badge label={story.category} variant="accent" />
         </View>
-        <Badge label={story.category} variant="accent" />
-      </View>
-      <Text style={[styles.title, { color: colors.foreground }]}>{story.title}</Text>
-      <Text style={[styles.desc, { color: colors.mutedForeground }]} numberOfLines={2}>
-        {story.description}
-      </Text>
-      <View style={styles.footer}>
-        <View style={styles.likes}>
-          <Feather name="heart" size={14} color={colors.destructive} />
-          <Text style={[styles.likesText, { color: colors.mutedForeground }]}>{story.likes}</Text>
-        </View>
-        <View style={styles.owner}>
-          <Feather name="user" size={12} color={colors.mutedForeground} />
-          <Text style={[styles.ownerText, { color: colors.mutedForeground }]}>Helped {story.ownerName}</Text>
+
+        {/* Divider */}
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+        {/* Post body */}
+        <Text
+          style={[styles.desc, { color: colors.mutedForeground }]}
+          numberOfLines={3}
+        >
+          {story.description}
+        </Text>
+
+        {/* Footer */}
+        <View style={styles.footer}>
+          <TouchableOpacity
+            onPress={handleLike}
+            style={styles.likeBtn}
+            activeOpacity={0.75}
+          >
+            <Feather
+              name="heart"
+              size={15}
+              color={liked ? colors.destructive : colors.mutedForeground}
+            />
+            <Text
+              style={[
+                styles.likeCount,
+                {
+                  color: liked ? colors.destructive : colors.mutedForeground,
+                  fontFamily: liked ? "Inter_600SemiBold" : "Inter_400Regular",
+                },
+              ]}
+            >
+              {likeCount}
+            </Text>
+          </TouchableOpacity>
+
+          <View style={styles.helpedRow}>
+            <Feather name="check-circle" size={13} color={accentColor} />
+            <Text style={[styles.helpedText, { color: colors.mutedForeground }]}>
+              Helped{" "}
+              <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold" }}>
+                {story.ownerName}
+              </Text>
+            </Text>
+          </View>
+
+          <Feather name="share-2" size={15} color={colors.mutedForeground} />
         </View>
       </View>
     </TouchableOpacity>
@@ -48,33 +124,45 @@ export function StoryCard({ story, onPress }: StoryCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    padding: 14,
-    marginBottom: 10,
-    gap: 8,
+    marginBottom: 12,
     borderWidth: 1,
+    overflow: "hidden",
   },
-  header: {
+  accentBar: {
+    height: 4,
+    width: "100%",
+  },
+  body: {
+    padding: 16,
+    gap: 10,
+  },
+  title: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 17,
+    lineHeight: 24,
+  },
+  authorRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
   },
-  helper: {
+  authorName: {
     fontFamily: "Inter_600SemiBold",
     fontSize: 13,
   },
   date: {
     fontFamily: "Inter_400Regular",
     fontSize: 11,
+    marginTop: 1,
   },
-  title: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 15,
-    lineHeight: 21,
+  divider: {
+    height: 1,
+    marginVertical: 2,
   },
   desc: {
     fontFamily: "Inter_400Regular",
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 20,
   },
   footer: {
     flexDirection: "row",
@@ -82,21 +170,20 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginTop: 4,
   },
-  likes: {
+  likeBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
   },
-  likesText: {
-    fontFamily: "Inter_500Medium",
+  likeCount: {
     fontSize: 13,
   },
-  owner: {
+  helpedRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 5,
   },
-  ownerText: {
+  helpedText: {
     fontFamily: "Inter_400Regular",
     fontSize: 12,
   },

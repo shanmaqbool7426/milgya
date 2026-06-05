@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { Button } from "@/components/ui/Button";
 import { CATEGORIES } from "@/constants/mockData";
+import { useAppStore } from "@/hooks/useAppStore";
 
 const STEPS = ["Category", "Details", "Location", "Submit"];
 
@@ -17,6 +18,7 @@ export default function ReportLostScreen() {
   const insets = useSafeAreaInsets();
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
+  const { addReport } = useAppStore();
 
   const [step, setStep] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -41,11 +43,29 @@ export default function ReportLostScreen() {
   const categoryLabel =
     CATEGORIES.find((c) => c.id === selectedCategory)?.label ?? "";
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (step < STEPS.length - 1) {
       setStep(step + 1);
     } else {
-      // Navigate to matches screen with report details as params
+      const now = new Date();
+      const dateStr = now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+      const timeStr = now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+      await addReport({
+        id: `user_${Date.now()}`,
+        title: title || "Untitled Item",
+        category: categoryLabel,
+        description,
+        location,
+        date: dateStr,
+        time: timeStr,
+        status: "active",
+        images: [],
+        contactName: "Rahul Kumar",
+        reward: reward || undefined,
+        route: route || undefined,
+        userId: "me",
+        isUrgent: false,
+      });
       router.replace({
         pathname: "/matches",
         params: {

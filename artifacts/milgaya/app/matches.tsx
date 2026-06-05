@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import { useColors } from "@/hooks/useColors";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { findMatches, type MatchResult } from "@/utils/matching";
+import { useAppStore } from "@/hooks/useAppStore";
 
 const { width } = Dimensions.get("window");
 
@@ -179,6 +180,8 @@ export default function MatchesScreen() {
   const insets = useSafeAreaInsets();
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
+  const { addMatchHistory } = useAppStore();
+  const savedRef = useRef(false);
 
   const params = useLocalSearchParams<{
     category: string;
@@ -195,6 +198,22 @@ export default function MatchesScreen() {
   });
 
   const topMatch = matches[0];
+
+  useEffect(() => {
+    if (savedRef.current) return;
+    savedRef.current = true;
+    const now = new Date();
+    addMatchHistory({
+      id: `mh_${Date.now()}`,
+      reportTitle: params.title ?? "Unknown Item",
+      reportCategory: params.category ?? "",
+      reportLocation: params.location ?? "",
+      matchCount: matches.length,
+      topMatchTitle: topMatch?.item.title,
+      topMatchScore: topMatch?.score,
+      date: now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
+    });
+  }, []);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

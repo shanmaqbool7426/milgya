@@ -9,15 +9,17 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
-import { LOST_ITEMS } from "@/constants/mockData";
-
-const MY_REPORTS = LOST_ITEMS.slice(0, 3);
+import { useAppStore } from "@/hooks/useAppStore";
 
 export default function ProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
+  const { myReports, matchHistory } = useAppStore();
+
+  const displayReports = myReports.slice(0, 5);
+  const displayHistory = matchHistory.slice(0, 5);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -52,9 +54,9 @@ export default function ProfileScreen() {
 
           {/* Stats */}
           <View style={[styles.statsCard, { backgroundColor: colors.background }]}>
-            <StatBox label="Reports" value="8" icon="file-text" color={colors.primary} colors={colors} />
+            <StatBox label="Reports" value={String(myReports.length)} icon="file-text" color={colors.primary} colors={colors} />
             <View style={[styles.statDiv, { backgroundColor: colors.border }]} />
-            <StatBox label="Recoveries" value="3" icon="check-circle" color={colors.success} colors={colors} />
+            <StatBox label="Matches" value={String(matchHistory.length)} icon="zap" color={colors.accent} colors={colors} />
             <View style={[styles.statDiv, { backgroundColor: colors.border }]} />
             <StatBox label="Points" value="420" icon="star" color="#F59E0B" colors={colors} />
             <View style={[styles.statDiv, { backgroundColor: colors.border }]} />
@@ -81,37 +83,116 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* My Active Reports */}
+        {/* My Active Reports — from AsyncStorage */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>My Reports</Text>
-            <TouchableOpacity>
-              <Text style={[styles.seeAll, { color: colors.primary }]}>See all</Text>
-            </TouchableOpacity>
+            {myReports.length > 0 && (
+              <View style={[styles.countPill, { backgroundColor: `${colors.primary}18` }]}>
+                <Text style={[styles.countPillText, { color: colors.primary }]}>{myReports.length}</Text>
+              </View>
+            )}
           </View>
-          {MY_REPORTS.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              onPress={() => router.push(`/item/lost/${item.id}`)}
-              style={[styles.reportRow, { backgroundColor: colors.card, borderColor: colors.border }]}
-            >
-              <View style={[styles.reportIcon, { backgroundColor: `${item.status === "recovered" ? colors.success : colors.primary}15` }]}>
-                <Feather
-                  name={item.status === "recovered" ? "check-circle" : "alert-circle"}
-                  size={18}
-                  color={item.status === "recovered" ? colors.success : colors.primary}
+
+          {displayReports.length === 0 ? (
+            <View style={[styles.emptyBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Feather name="file-text" size={28} color={colors.mutedForeground} />
+              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No reports yet</Text>
+              <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>
+                Submit a lost item report and it will appear here — even after you close the app.
+              </Text>
+              <TouchableOpacity
+                onPress={() => router.push("/report/lost")}
+                style={[styles.emptyBtn, { backgroundColor: colors.primary }]}
+              >
+                <Text style={styles.emptyBtnText}>Report Lost Item</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            displayReports.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                onPress={() => router.push(`/item/lost/${item.id}`)}
+                style={[styles.reportRow, { backgroundColor: colors.card, borderColor: colors.border }]}
+              >
+                <View style={[styles.reportIcon, { backgroundColor: `${item.status === "recovered" ? colors.success : colors.primary}15` }]}>
+                  <Feather
+                    name={item.status === "recovered" ? "check-circle" : "alert-circle"}
+                    size={18}
+                    color={item.status === "recovered" ? colors.success : colors.primary}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.reportTitle, { color: colors.foreground }]} numberOfLines={1}>{item.title}</Text>
+                  <Text style={[styles.reportMeta, { color: colors.mutedForeground }]}>
+                    {item.category}  ·  {item.date}
+                  </Text>
+                  {item.location ? (
+                    <Text style={[styles.reportLocation, { color: colors.mutedForeground }]} numberOfLines={1}>
+                      <Feather name="map-pin" size={10} />  {item.location}
+                    </Text>
+                  ) : null}
+                </View>
+                <Badge
+                  label={item.status === "recovered" ? "Recovered" : "Active"}
+                  variant={item.status === "recovered" ? "success" : "primary"}
                 />
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
+
+        {/* Match History — from AsyncStorage */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Match History</Text>
+            {matchHistory.length > 0 && (
+              <View style={[styles.countPill, { backgroundColor: `${colors.accent}18` }]}>
+                <Text style={[styles.countPillText, { color: colors.accent }]}>{matchHistory.length}</Text>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.reportTitle, { color: colors.foreground }]}>{item.title}</Text>
-                <Text style={[styles.reportDate, { color: colors.mutedForeground }]}>{item.date}</Text>
+            )}
+          </View>
+
+          {displayHistory.length === 0 ? (
+            <View style={[styles.emptyBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Feather name="zap" size={28} color={colors.mutedForeground} />
+              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No match history</Text>
+              <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>
+                When you submit a lost item report, your match results will be saved here.
+              </Text>
+            </View>
+          ) : (
+            displayHistory.map((entry) => (
+              <View
+                key={entry.id}
+                style={[styles.historyRow, { backgroundColor: colors.card, borderColor: colors.border }]}
+              >
+                <View style={[styles.historyIcon, { backgroundColor: `${colors.accent}15` }]}>
+                  <Feather name="zap" size={16} color={colors.accent} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.historyTitle, { color: colors.foreground }]} numberOfLines={1}>
+                    {entry.reportTitle}
+                  </Text>
+                  {entry.topMatchTitle ? (
+                    <Text style={[styles.historyMatch, { color: colors.mutedForeground }]} numberOfLines={1}>
+                      Top match: {entry.topMatchTitle} ({entry.topMatchScore}%)
+                    </Text>
+                  ) : null}
+                  <Text style={[styles.historyDate, { color: colors.mutedForeground }]}>{entry.date}</Text>
+                </View>
+                <View style={[styles.matchCountPill, {
+                  backgroundColor: entry.matchCount > 0 ? `${colors.success}18` : colors.muted,
+                }]}>
+                  <Text style={[styles.matchCountText, {
+                    color: entry.matchCount > 0 ? colors.success : colors.mutedForeground,
+                  }]}>
+                    {entry.matchCount} match{entry.matchCount !== 1 ? "es" : ""}
+                  </Text>
+                </View>
               </View>
-              <Badge
-                label={item.status === "recovered" ? "Recovered" : "Active"}
-                variant={item.status === "recovered" ? "success" : "primary"}
-              />
-            </TouchableOpacity>
-          ))}
+            ))
+          )}
         </View>
 
         {/* Quick Links */}
@@ -235,12 +316,34 @@ const styles = StyleSheet.create({
   reputationTiers: { flexDirection: "row", justifyContent: "space-between" },
   tierText: { fontFamily: "Inter_500Medium", fontSize: 11 },
   section: { paddingHorizontal: 20, gap: 12, marginBottom: 24 },
-  sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  sectionTitle: { fontFamily: "Inter_700Bold", fontSize: 18 },
-  seeAll: { fontFamily: "Inter_600SemiBold", fontSize: 13 },
+  sectionHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  sectionTitle: { fontFamily: "Inter_700Bold", fontSize: 18, flex: 1 },
+  countPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 20,
+  },
+  countPillText: { fontFamily: "Inter_700Bold", fontSize: 12 },
+  emptyBox: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    padding: 24,
+    alignItems: "center",
+    gap: 8,
+  },
+  emptyTitle: { fontFamily: "Inter_600SemiBold", fontSize: 15, marginTop: 4 },
+  emptySub: { fontFamily: "Inter_400Regular", fontSize: 13, textAlign: "center", lineHeight: 19 },
+  emptyBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 100,
+    marginTop: 4,
+  },
+  emptyBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 14, color: "#FFF" },
   reportRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: 12,
     padding: 12,
     borderRadius: 12,
@@ -248,7 +351,27 @@ const styles = StyleSheet.create({
   },
   reportIcon: { width: 40, height: 40, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   reportTitle: { fontFamily: "Inter_600SemiBold", fontSize: 14 },
-  reportDate: { fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 },
+  reportMeta: { fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 },
+  reportLocation: { fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 },
+  historyRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  historyIcon: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  historyTitle: { fontFamily: "Inter_600SemiBold", fontSize: 14 },
+  historyMatch: { fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 },
+  historyDate: { fontFamily: "Inter_400Regular", fontSize: 11, marginTop: 2 },
+  matchCountPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    alignSelf: "center",
+  },
+  matchCountText: { fontFamily: "Inter_600SemiBold", fontSize: 11 },
   linksCard: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
   quickLink: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
   quickLinkIcon: { width: 32, height: 32, borderRadius: 8, alignItems: "center", justifyContent: "center" },
