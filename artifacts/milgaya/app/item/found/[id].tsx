@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
 import { FOUND_ITEMS, PARTNERS } from "@/constants/mockData";
+import { useAppStore } from "@/hooks/useAppStore";
 
 const { width } = Dimensions.get("window");
 
@@ -31,8 +32,13 @@ export default function FoundItemDetailScreen() {
   const insets = useSafeAreaInsets();
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
+  const { myFoundReports } = useAppStore();
 
-  const item = FOUND_ITEMS.find((i) => i.id === id) ?? FOUND_ITEMS[0];
+  const mockItem = FOUND_ITEMS.find((i) => i.id === id);
+  const myItem = myFoundReports.find((i) => i.id === id);
+  const item = mockItem ?? myItem ?? FOUND_ITEMS[0];
+  const isMyReport = !!myItem && !mockItem;
+
   const partner = item.partnerId ? PARTNERS.find((p) => p.id === item.partnerId) : null;
   const iconColor = CATEGORY_COLORS[item.category] ?? "#6B7280";
   const iconName = (CATEGORY_ICONS[item.category] ?? "box") as any;
@@ -125,8 +131,18 @@ export default function FoundItemDetailScreen() {
       </ScrollView>
 
       <View style={[styles.bottomBar, { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: bottomPad + 12 }]}>
-        <Button title="This is Mine!" onPress={() => {}} fullWidth size="lg" />
-        <Button title="Contact Finder" onPress={() => {}} variant="outline" style={{ flex: 0, paddingHorizontal: 16 }} />
+        {isMyReport ? (
+          <View style={[styles.myReportBar, { backgroundColor: `${colors.accent}12`, borderColor: `${colors.accent}30` }]}>
+            <Feather name="star" size={16} color={colors.accent} />
+            <Text style={[styles.myReportText, { color: colors.accent }]}>Your Report</Text>
+            <Text style={[styles.myReportSub, { color: colors.mutedForeground }]}>You submitted this found item</Text>
+          </View>
+        ) : (
+          <>
+            <Button title="This is Mine!" onPress={() => {}} fullWidth size="lg" />
+            <Button title="Contact Finder" onPress={() => {}} variant="outline" style={{ flex: 0, paddingHorizontal: 16 }} />
+          </>
+        )}
       </View>
     </View>
   );
@@ -216,4 +232,16 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     borderTopWidth: 1,
   },
+  myReportBar: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  myReportText: { fontFamily: "Inter_700Bold", fontSize: 15 },
+  myReportSub: { fontFamily: "Inter_400Regular", fontSize: 13, flex: 1 },
 });

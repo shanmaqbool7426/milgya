@@ -152,8 +152,9 @@ export default function ProfileScreen() {
               </View>
             </View>
             {myFoundReports.slice(0, 5).map((item) => (
-              <View
+              <TouchableOpacity
                 key={item.id}
+                onPress={() => router.push(`/item/found/${item.id}`)}
                 style={[styles.reportRow, { backgroundColor: colors.card, borderColor: colors.border }]}
               >
                 <View style={[styles.reportIcon, { backgroundColor: `${colors.accent}15` }]}>
@@ -171,7 +172,7 @@ export default function ProfileScreen() {
                   ) : null}
                 </View>
                 <Badge label="Found" variant="accent" />
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
         )}
