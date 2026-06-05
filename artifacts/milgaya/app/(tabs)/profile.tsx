@@ -16,7 +16,7 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
-  const { myReports, myFoundReports, matchHistory } = useAppStore();
+  const { myReports, myFoundReports, matchHistory, unreadCount } = useAppStore();
 
   const displayReports = myReports.slice(0, 5);
   const displayHistory = matchHistory.slice(0, 5);
@@ -235,7 +235,7 @@ export default function ProfileScreen() {
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Account</Text>
           <View style={[styles.linksCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <QuickLink icon="shield" label="Recovery Partners" onPress={() => router.push("/partners")} colors={colors} />
-            <QuickLink icon="bell" label="Notifications" onPress={() => router.push("/notifications")} colors={colors} badge="2" />
+            <QuickLink icon="bell" label="Notifications" onPress={() => router.push("/notifications")} colors={colors} badge={unreadCount > 0 ? String(unreadCount) : undefined} />
             <QuickLink icon="users" label="Community" onPress={() => router.push("/(tabs)/community")} colors={colors} />
             <QuickLink icon="settings" label="Settings" onPress={() => router.push("/settings")} colors={colors} last />
           </View>
