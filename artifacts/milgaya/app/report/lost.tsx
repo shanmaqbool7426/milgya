@@ -38,34 +38,25 @@ export default function ReportLostScreen() {
     Pets: "heart", Other: "box",
   };
 
-  const handleNext = () => {
-    if (step < STEPS.length - 1) setStep(step + 1);
-    else setSubmitted(true);
-  };
+  const categoryLabel =
+    CATEGORIES.find((c) => c.id === selectedCategory)?.label ?? "";
 
-  if (submitted) {
-    return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={styles.success}>
-          <View style={[styles.successIcon, { backgroundColor: `${colors.success}15` }]}>
-            <Feather name="check-circle" size={60} color={colors.success} />
-          </View>
-          <Text style={[styles.successTitle, { color: colors.foreground }]}>Report Submitted!</Text>
-          <Text style={[styles.successText, { color: colors.mutedForeground }]}>
-            Your lost item report has been posted. The community will be notified. You'll receive alerts for any matches.
-          </Text>
-          <View style={[styles.successCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Feather name="bell" size={18} color={colors.primary} />
-            <Text style={[styles.successCardText, { color: colors.mutedForeground }]}>
-              Push notifications are enabled for match alerts
-            </Text>
-          </View>
-          <Button title="View My Report" onPress={() => router.replace("/(tabs)")} fullWidth size="lg" style={{ marginTop: 8 }} />
-          <Button title="Go Home" onPress={() => router.replace("/(tabs)")} variant="ghost" fullWidth />
-        </View>
-      </View>
-    );
-  }
+  const handleNext = () => {
+    if (step < STEPS.length - 1) {
+      setStep(step + 1);
+    } else {
+      // Navigate to matches screen with report details as params
+      router.replace({
+        pathname: "/matches",
+        params: {
+          category: categoryLabel,
+          title,
+          description,
+          location,
+        },
+      });
+    }
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
