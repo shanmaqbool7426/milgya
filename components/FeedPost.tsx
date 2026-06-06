@@ -238,6 +238,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     overflow: "hidden",
     marginBottom: 12,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
   banner: {
     height: 160,

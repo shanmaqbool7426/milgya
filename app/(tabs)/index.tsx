@@ -6,229 +6,229 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  FlatList,
   Platform,
 } from "react-native";
 import { router } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { useColors } from "@/hooks/useColors";
-import { QuickAction } from "@/components/QuickAction";
-import { LostItemCard, FoundItemCard } from "@/components/ItemCard";
 import { FeedPost } from "@/components/FeedPost";
 import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
-import { LOST_ITEMS, FOUND_ITEMS, FEED_POSTS } from "@/constants/mockData";
+import { FEED_POSTS, LOST_ITEMS, FOUND_ITEMS } from "@/constants/mockData";
+import { useAppStore } from "@/hooks/useAppStore";
 
 const EMERGENCY_ALERTS = [
-  { id: "e1", title: "Passports Lost at IGI Airport", count: 3, color: "#EF4444" },
-  { id: "e2", title: "Wallets Stolen at City Mall", count: 7, color: "#F59E0B" },
+  { id: "e1", title: "Passports Lost at IGI Airport", count: 3, color: "#FF4757" },
+  { id: "e2", title: "Wallets Stolen at City Mall", count: 7, color: "#FFA502" },
 ];
 
-const TRENDING_RECOVERIES = [
-  { id: "t1", name: "MacBook Pro", days: 2, helper: "Rajesh G." },
-  { id: "t2", name: "Gold Necklace", days: 1, helper: "Community" },
-  { id: "t3", name: "Passport", days: 0, helper: "Airport Vol." },
+const CATEGORY_ITEMS = [
+  { label: "Wallet", icon: "credit-card", color: "#5B67FF" },
+  { label: "Phone", icon: "smartphone", color: "#FF4757" },
+  { label: "Keys", icon: "key", color: "#FFA502" },
+  { label: "Bag", icon: "briefcase", color: "#8B94FF" },
+  { label: "Docs", icon: "file-text", color: "#00BFA5" },
+  { label: "Other", icon: "more-horizontal", color: "#8A90A2" },
 ];
 
 export default function HomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
-  const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
-  const [activeTab, setActiveTab] = useState<"lost" | "found">("lost");
+  const bottomPad = insets.bottom + 90;
   const [searchText, setSearchText] = useState("");
+  const { unreadCount } = useAppStore();
 
-  const displayedLost = LOST_ITEMS.filter((i) => i.status === "active").slice(0, 3);
-  const displayedFound = FOUND_ITEMS.slice(0, 3);
-  const previewFeed = FEED_POSTS.slice(0, 3);
+  const recentLost = LOST_ITEMS.filter((i) => i.status === "active").slice(0, 3);
+  const recentFound = FOUND_ITEMS.slice(0, 3);
+  const previewFeed = FEED_POSTS.slice(0, 4);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: topPad + 12, backgroundColor: colors.background }]}>
+      {/* Header */}
+      <Animated.View
+        entering={FadeInDown.duration(350)}
+        style={[styles.header, { paddingTop: topPad + 10, backgroundColor: colors.card, borderBottomColor: colors.border }]}
+      >
         <View style={styles.headerTop}>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.greeting, { color: colors.mutedForeground }]}>Good morning</Text>
-            <Text style={[styles.headerTitle, { color: colors.foreground }]}>MilGaya</Text>
+          <TouchableOpacity style={styles.locationPill}>
+            <Feather name="map-pin" size={14} color={colors.primary} />
+            <Text style={[styles.locationText, { color: colors.foreground }]}>Bahawalpur</Text>
+            <Feather name="chevron-down" size={14} color={colors.mutedForeground} />
+          </TouchableOpacity>
+
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              onPress={() => router.push("/notifications")}
+              style={[styles.headerIconBtn, { backgroundColor: colors.muted }]}
+            >
+              <Feather name="bell" size={18} color={colors.foreground} />
+              {unreadCount > 0 && (
+                <View style={[styles.notifDot, { backgroundColor: colors.destructive }]} />
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push("/(tabs)/profile")}>
+              <Avatar name="Ali Hassan" size={38} />
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity onPress={() => router.push("/notifications")} style={[styles.notifBtn, { backgroundColor: colors.muted }]}>
-            <Feather name="bell" size={20} color={colors.foreground} />
-            <View style={[styles.notifDot, { backgroundColor: colors.destructive }]} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push("/(tabs)/profile")} style={{ marginLeft: 8 }}>
-            <Avatar name="Rahul Kumar" size={38} />
-          </TouchableOpacity>
         </View>
 
-        <View style={[styles.searchBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Feather name="search" size={18} color={colors.mutedForeground} />
-          <TextInput
-            value={searchText}
-            onChangeText={setSearchText}
-            placeholder="Search lost & found items..."
-            placeholderTextColor={colors.mutedForeground}
-            style={[styles.searchInput, { color: colors.foreground }]}
-            onFocus={() => router.push("/(tabs)/search")}
-          />
-          <TouchableOpacity style={[styles.filterBtn, { backgroundColor: colors.secondary }]}>
-            <Feather name="sliders" size={15} color={colors.primary} />
-          </TouchableOpacity>
-        </View>
-
-        <View style={[styles.locationBar, { backgroundColor: colors.muted }]}>
-          <Feather name="map-pin" size={14} color={colors.primary} />
-          <Text style={[styles.locationText, { color: colors.foreground }]}>Koramangala, Bangalore</Text>
-          <TouchableOpacity>
-            <Text style={[styles.changeText, { color: colors.primary }]}>Change</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+        {/* Search */}
+        <TouchableOpacity
+          onPress={() => router.push("/(tabs)/search")}
+          style={[styles.searchBar, { backgroundColor: colors.muted, borderColor: colors.border }]}
+        >
+          <Feather name="search" size={16} color={colors.mutedForeground} />
+          <Text style={[styles.searchPlaceholder, { color: colors.mutedForeground }]}>
+            Search lost or found items...
+          </Text>
+          <View style={[styles.filterIconBtn, { backgroundColor: colors.primary + "15" }]}>
+            <Feather name="sliders" size={14} color={colors.primary} />
+          </View>
+        </TouchableOpacity>
+      </Animated.View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPad + 90 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPad + 80 }]}
       >
+        {/* Quick Actions */}
+        <Animated.View entering={FadeInDown.delay(80).duration(400)} style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Quick Actions</Text>
+          <View style={styles.quickActionsRow}>
+            <TouchableOpacity
+              style={[styles.quickActionCard, { backgroundColor: colors.destructive + "12", borderColor: colors.destructive + "25" }]}
+              activeOpacity={0.8}
+              onPress={() => router.push("/report/lost")}
+            >
+              <View style={[styles.qaIconWrap, { backgroundColor: colors.destructive + "20" }]}>
+                <Feather name="alert-circle" size={20} color={colors.destructive} />
+              </View>
+              <Text style={[styles.qaTitle, { color: colors.destructive }]}>Report Lost</Text>
+              <Text style={[styles.qaSub, { color: colors.destructive + "BB" }]}>Report something you lost</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.quickActionCard, { backgroundColor: "#2ED57312", borderColor: "#2ED57325" }]}
+              activeOpacity={0.8}
+              onPress={() => router.push("/report/found")}
+            >
+              <View style={[styles.qaIconWrap, { backgroundColor: "#2ED57325" }]}>
+                <Feather name="check-circle" size={20} color={colors.success} />
+              </View>
+              <Text style={[styles.qaTitle, { color: colors.success }]}>Report Found</Text>
+              <Text style={[styles.qaSub, { color: colors.success + "BB" }]}>Found something? Return it</Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+
         {/* Emergency Alerts */}
-        <View style={styles.section}>
+        <Animated.View entering={FadeInDown.delay(120).duration(400)} style={styles.section}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleRow}>
-              <Feather name="alert-circle" size={16} color={colors.destructive} />
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Emergency Alerts</Text>
+              <Feather name="activity" size={15} color={colors.destructive} />
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Live Alerts</Text>
             </View>
             <Badge label="Live" variant="destructive" />
           </View>
           {EMERGENCY_ALERTS.map((alert) => (
             <TouchableOpacity
               key={alert.id}
-              style={[styles.alertCard, { backgroundColor: `${alert.color}10`, borderColor: `${alert.color}30` }]}
+              activeOpacity={0.8}
+              style={[styles.alertCard, { backgroundColor: colors.card, borderColor: colors.border, borderLeftColor: alert.color, shadowColor: alert.color }]}
             >
               <View style={[styles.alertDot, { backgroundColor: alert.color }]} />
-              <Text style={[styles.alertText, { color: colors.foreground, flex: 1 }]}>{alert.title}</Text>
-              <View style={[styles.alertBadge, { backgroundColor: alert.color }]}>
-                <Text style={styles.alertBadgeText}>{alert.count} reports</Text>
+              <Text style={[styles.alertText, { color: colors.foreground }]} numberOfLines={1}>{alert.title}</Text>
+              <View style={[styles.alertCount, { backgroundColor: alert.color }]}>
+                <Text style={styles.alertCountText}>{alert.count}</Text>
               </View>
             </TouchableOpacity>
           ))}
-        </View>
+        </Animated.View>
 
-        {/* Quick Actions */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Quick Actions</Text>
-          <View style={[styles.quickActionsCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <QuickAction icon="alert-circle" label="Report Lost" color="#EF4444" onPress={() => router.push("/report/lost")} />
-            <QuickAction icon="check-circle" label="Report Found" color="#10B981" onPress={() => router.push("/report/found")} />
-            <QuickAction icon="search" label="Search Items" color="#3B82F6" onPress={() => router.push("/(tabs)/search")} />
-            <QuickAction icon="map" label="Map View" color="#8B5CF6" onPress={() => router.push("/(tabs)/map")} />
-          </View>
-        </View>
-
-        {/* Nearby Items */}
-        <View style={styles.section}>
+        {/* Nearby Lost Items */}
+        <Animated.View entering={FadeInDown.delay(160).duration(400)} style={styles.section}>
           <View style={styles.sectionHeader}>
-            <View style={styles.tabRow}>
-              <TouchableOpacity
-                onPress={() => setActiveTab("lost")}
-                style={[styles.tab, { borderBottomColor: activeTab === "lost" ? colors.primary : "transparent" }]}
-              >
-                <Text style={[styles.tabText, { color: activeTab === "lost" ? colors.primary : colors.mutedForeground }]}>
-                  Lost ({displayedLost.length})
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setActiveTab("found")}
-                style={[styles.tab, { borderBottomColor: activeTab === "found" ? colors.accent : "transparent" }]}
-              >
-                <Text style={[styles.tabText, { color: activeTab === "found" ? colors.accent : colors.mutedForeground }]}>
-                  Found ({displayedFound.length})
-                </Text>
-              </TouchableOpacity>
-            </View>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Nearby Lost Items</Text>
             <TouchableOpacity onPress={() => router.push("/(tabs)/search")}>
               <Text style={[styles.seeAll, { color: colors.primary }]}>See all</Text>
             </TouchableOpacity>
           </View>
+          {recentLost.map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              activeOpacity={0.8}
+              style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => router.push(`/item/lost/${item.id}`)}
+            >
+              <View style={[styles.itemImgPlaceholder, { backgroundColor: "#FF475715" }]}>
+                <Feather name="alert-circle" size={20} color={colors.destructive} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.itemTitle, { color: colors.foreground }]} numberOfLines={1}>{item.title}</Text>
+                <View style={styles.itemMeta}>
+                  <Feather name="map-pin" size={11} color={colors.mutedForeground} />
+                  <Text style={[styles.itemMetaText, { color: colors.mutedForeground }]} numberOfLines={1}>{item.location}</Text>
+                </View>
+                <Text style={[styles.itemTime, { color: colors.mutedForeground }]}>{item.time}</Text>
+              </View>
+              <View style={[styles.lostBadge, { backgroundColor: "#FF475715" }]}>
+                <Text style={[styles.lostBadgeText, { color: colors.destructive }]}>Lost</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </Animated.View>
 
-          {activeTab === "lost" ? (
-            displayedLost.map((item) => (
-              <LostItemCard key={item.id} item={item} onPress={() => router.push(`/item/lost/${item.id}`)} />
-            ))
-          ) : (
-            displayedFound.map((item) => (
-              <FoundItemCard key={item.id} item={item} onPress={() => router.push(`/item/found/${item.id}`)} />
-            ))
-          )}
-        </View>
+        {/* Nearby Found Items */}
+        <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Nearby Found Items</Text>
+            <TouchableOpacity onPress={() => router.push("/(tabs)/search")}>
+              <Text style={[styles.seeAll, { color: colors.primary }]}>See all</Text>
+            </TouchableOpacity>
+          </View>
+          {recentFound.map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              activeOpacity={0.8}
+              style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => router.push(`/item/found/${item.id}`)}
+            >
+              <View style={[styles.itemImgPlaceholder, { backgroundColor: "#2ED57315" }]}>
+                <Feather name="check-circle" size={20} color={colors.success} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.itemTitle, { color: colors.foreground }]} numberOfLines={1}>{item.title}</Text>
+                <View style={styles.itemMeta}>
+                  <Feather name="map-pin" size={11} color={colors.mutedForeground} />
+                  <Text style={[styles.itemMetaText, { color: colors.mutedForeground }]} numberOfLines={1}>{item.foundLocation}</Text>
+                </View>
+                <Text style={[styles.itemTime, { color: colors.mutedForeground }]}>{item.time}</Text>
+              </View>
+              <View style={[styles.foundBadge, { backgroundColor: "#2ED57315" }]}>
+                <Text style={[styles.foundBadgeText, { color: colors.success }]}>Found</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </Animated.View>
 
-        {/* Community Feed Preview — LinkedIn style */}
-        <View style={styles.section}>
+        {/* Community Feed */}
+        <Animated.View entering={FadeInDown.delay(240).duration(400)} style={styles.section}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleRow}>
-              <Feather name="users" size={16} color={colors.primary} />
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Community Feed</Text>
+              <Feather name="users" size={15} color={colors.primary} />
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Recent Success</Text>
             </View>
             <TouchableOpacity onPress={() => router.push("/(tabs)/community")}>
-              <Text style={[styles.seeAll, { color: colors.primary }]}>View all</Text>
+              <Text style={[styles.seeAll, { color: colors.primary }]}>See all</Text>
             </TouchableOpacity>
           </View>
           {previewFeed.map((post) => (
             <FeedPost key={post.id} post={post} onPress={() => router.push("/(tabs)/community")} />
           ))}
-          <TouchableOpacity
-            onPress={() => router.push("/(tabs)/community")}
-            style={[styles.moreFeedBtn, { backgroundColor: colors.secondary, borderColor: `${colors.primary}30` }]}
-          >
-            <Feather name="users" size={16} color={colors.primary} />
-            <Text style={[styles.moreFeedText, { color: colors.primary }]}>
-              See all community posts
-            </Text>
-            <Feather name="chevron-right" size={16} color={colors.primary} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Trending Recoveries */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionTitleRow}>
-              <Feather name="trending-up" size={16} color={colors.accent} />
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Trending Recoveries</Text>
-            </View>
-          </View>
-          <FlatList
-            data={TRENDING_RECOVERIES}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={{ gap: 10 }}
-            renderItem={({ item }) => (
-              <View style={[styles.trendCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <View style={[styles.trendIcon, { backgroundColor: `${colors.accent}15` }]}>
-                  <Feather name="package" size={18} color={colors.accent} />
-                </View>
-                <Text style={[styles.trendName, { color: colors.foreground }]}>{item.name}</Text>
-                <Text style={[styles.trendHelper, { color: colors.mutedForeground }]}>by {item.helper}</Text>
-                <Badge
-                  label={item.days === 0 ? "Today" : `${item.days}d ago`}
-                  variant={item.days === 0 ? "accent" : "muted"}
-                />
-              </View>
-            )}
-          />
-        </View>
-
-        {/* Partners CTA */}
-        <TouchableOpacity
-          onPress={() => router.push("/partners")}
-          style={[styles.partnerCTA, { backgroundColor: `${colors.primary}10`, borderColor: `${colors.primary}25` }]}
-        >
-          <View style={[styles.partnerIcon, { backgroundColor: colors.primary }]}>
-            <Feather name="shield" size={20} color="#FFF" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.partnerTitle, { color: colors.foreground }]}>5 Recovery Partners Nearby</Text>
-            <Text style={[styles.partnerSub, { color: colors.mutedForeground }]}>Verified shops, schools & police stations</Text>
-          </View>
-          <Feather name="chevron-right" size={18} color={colors.primary} />
-        </TouchableOpacity>
+        </Animated.View>
       </ScrollView>
     </View>
   );
@@ -238,20 +238,30 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
     paddingHorizontal: 20,
-    paddingBottom: 12,
+    paddingBottom: 14,
     gap: 12,
+    borderBottomWidth: 1,
   },
   headerTop: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    justifyContent: "space-between",
   },
-  greeting: { fontFamily: "Inter_400Regular", fontSize: 13 },
-  headerTitle: { fontFamily: "Inter_700Bold", fontSize: 26, letterSpacing: -0.5 },
-  notifBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  locationPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  locationText: { fontFamily: "Inter_700Bold", fontSize: 16 },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  headerIconBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
@@ -264,103 +274,94 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     borderWidth: 1.5,
-    borderColor: "white",
+    borderColor: "#fff",
   },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderRadius: 14,
     borderWidth: 1,
   },
-  searchInput: {
-    flex: 1,
-    fontFamily: "Inter_400Regular",
-    fontSize: 15,
-    height: 30,
-  },
-  filterBtn: {
+  searchPlaceholder: { flex: 1, fontFamily: "Inter_400Regular", fontSize: 14 },
+  filterIconBtn: {
     width: 32,
     height: 32,
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
   },
-  locationBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-  },
-  locationText: { fontFamily: "Inter_500Medium", fontSize: 13, flex: 1 },
-  changeText: { fontFamily: "Inter_600SemiBold", fontSize: 13 },
-  scrollContent: { paddingHorizontal: 20, paddingTop: 16, gap: 24 },
-  section: { gap: 12 },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
+  scrollContent: { paddingTop: 20, gap: 28 },
+  section: { gap: 12, paddingHorizontal: 20 },
+  sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   sectionTitleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   sectionTitle: { fontFamily: "Inter_700Bold", fontSize: 17 },
   seeAll: { fontFamily: "Inter_600SemiBold", fontSize: 13 },
-  tabRow: { flexDirection: "row", gap: 0 },
-  tab: { paddingBottom: 6, paddingHorizontal: 4, marginRight: 16, borderBottomWidth: 2 },
-  tabText: { fontFamily: "Inter_600SemiBold", fontSize: 15 },
+
+  quickActionsRow: { flexDirection: "row", gap: 14 },
+  quickActionCard: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 8,
+  },
+  qaIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  qaTitle: { fontFamily: "Inter_700Bold", fontSize: 15 },
+  qaSub: { fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 18 },
+
   alertCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    padding: 12,
-    borderRadius: 12,
+    padding: 14,
+    borderRadius: 14,
     borderWidth: 1,
+    borderLeftWidth: 4,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   alertDot: { width: 8, height: 8, borderRadius: 4 },
-  alertText: { fontFamily: "Inter_500Medium", fontSize: 13 },
-  alertBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 100 },
-  alertBadgeText: { fontFamily: "Inter_600SemiBold", fontSize: 11, color: "#FFF" },
-  quickActionsCard: {
-    flexDirection: "row",
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: 8,
-  },
-  moreFeedBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginTop: 4,
-  },
-  moreFeedText: { fontFamily: "Inter_600SemiBold", fontSize: 14, flex: 1, textAlign: "center" },
-  trendCard: {
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    gap: 6,
-    width: 140,
-    alignItems: "flex-start",
-  },
-  trendIcon: { width: 40, height: 40, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  trendName: { fontFamily: "Inter_600SemiBold", fontSize: 13 },
-  trendHelper: { fontFamily: "Inter_400Regular", fontSize: 11 },
-  partnerCTA: {
+  alertText: { flex: 1, fontFamily: "Inter_500Medium", fontSize: 13 },
+  alertCount: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 100 },
+  alertCountText: { fontFamily: "Inter_700Bold", fontSize: 11, color: "#FFF" },
+
+  itemCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    padding: 16,
+    padding: 14,
     borderRadius: 16,
     borderWidth: 1,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
   },
-  partnerIcon: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
-  partnerTitle: { fontFamily: "Inter_600SemiBold", fontSize: 15 },
-  partnerSub: { fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 },
+  itemImgPlaceholder: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  itemTitle: { fontFamily: "Inter_600SemiBold", fontSize: 14, marginBottom: 4 },
+  itemMeta: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 2 },
+  itemMetaText: { fontFamily: "Inter_400Regular", fontSize: 12 },
+  itemTime: { fontFamily: "Inter_400Regular", fontSize: 11 },
+  lostBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  lostBadgeText: { fontFamily: "Inter_700Bold", fontSize: 12 },
+  foundBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  foundBadgeText: { fontFamily: "Inter_700Bold", fontSize: 12 },
 });

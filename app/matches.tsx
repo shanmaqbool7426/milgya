@@ -526,6 +526,11 @@ const styles = StyleSheet.create({
     padding: 14,
     gap: 10,
     position: "relative",
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
   rankBadge: {
     position: "absolute",

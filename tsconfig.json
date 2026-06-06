@@ -5,6 +5,7 @@
     "tsBuildInfoFile": ".tsbuildinfo",
     "baseUrl": ".",
     "strict": true,
+    "jsx": "react-native",
     "paths": {
       "@/*": [
         "./*"
@@ -16,10 +17,5 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
-  ],
-  "references": [
-    {
-      "path": "../../lib/api-client-react"
-    }
   ]
 }
